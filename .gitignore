@@ -1,2 +1,4 @@
 data/raw/*
 data/processed/loan_clean.csv
+__pycache__/
+*.pyc
