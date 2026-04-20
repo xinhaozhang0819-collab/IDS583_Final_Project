@@ -6,19 +6,32 @@ import pandas as pd
 from preprocess import CLEANING_METHODS, FEATURE_FLAG_CANDIDATES, FEATURE_GROUPS
 
 
-def write_temporal_report(report_result, report_config, output_path, feature_search_result=None):
+def write_temporal_report(
+    report_result,
+    report_config,
+    output_path,
+    feature_search_result=None,
+    visual_paths=None,
+):
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     markdown = build_temporal_report(
         report_result,
         report_config,
         feature_search_result=feature_search_result,
+        visual_paths=visual_paths,
     )
     output_path.write_text(markdown, encoding="utf-8")
     return output_path
 
 
-def build_temporal_report(report_result, report_config, feature_search_result=None):
+def build_temporal_report(
+    report_result,
+    report_config,
+    feature_search_result=None,
+    visual_paths=None,
+):
+    visual_paths = visual_paths or {}
     prepared_data = report_result["prepared_data"]
     split_summary = report_result["prepared_data"]["split_summary"].copy()
     validation_table = report_result["validation_table"].copy()
@@ -185,6 +198,26 @@ def build_temporal_report(report_result, report_config, feature_search_result=No
             "",
         ]
     )
+    validation_visual_lines = _image_section_lines(
+        [
+            ("Observed Default Rate Trend", visual_paths.get("default_rate_trend")),
+            ("Validation ROC Comparison", visual_paths.get("validation_roc_comparison")),
+            (
+                "Validation Reliability Diagram",
+                visual_paths.get("validation_calibration_comparison"),
+            ),
+        ]
+    )
+    if validation_visual_lines:
+        lines.extend(
+            [
+                "## Validation Visual Diagnostics",
+                "",
+                "Calibration markers are sized by bin count so sparse tail bins are visually distinguishable from dense central bins.",
+                "",
+            ]
+            + validation_visual_lines
+        )
 
     if not grid_search_display.empty:
         lines.extend(
@@ -245,6 +278,19 @@ def build_temporal_report(report_result, report_config, feature_search_result=No
             lines.extend([_dataframe_to_markdown(feature_search_display), ""])
         else:
             lines.extend(["No omitted feature groups were screened.", ""])
+        feature_visual_lines = _image_section_lines(
+            [("Feature Search Impact", visual_paths.get("feature_search_deltas"))]
+        )
+        if feature_visual_lines:
+            lines.extend(
+                [
+                    "## Feature Discovery Visuals",
+                    "",
+                    "The feature-search chart annotates exact validation deltas and shades the near-zero zone to separate material changes from noise-level movement.",
+                    "",
+                ]
+                + feature_visual_lines
+            )
 
     lines.extend(
         [
@@ -271,6 +317,23 @@ def build_temporal_report(report_result, report_config, feature_search_result=No
             "",
             _dataframe_to_markdown(champion_period_display),
             "",
+        ]
+    )
+
+    holdout_visual_lines = _image_section_lines(
+        [
+            ("Test ROC Comparison", visual_paths.get("test_roc_comparison")),
+            ("Test Reliability Diagram", visual_paths.get("test_calibration_comparison")),
+            ("Champion Validation KS Curve", visual_paths.get("champion_validation_ks")),
+            ("Champion Test KS Curve", visual_paths.get("champion_test_ks")),
+            ("Champion Score Distribution", visual_paths.get("champion_score_distribution")),
+        ]
+    )
+    if holdout_visual_lines:
+        lines.extend(["## Holdout Visual Diagnostics", ""] + holdout_visual_lines)
+
+    lines.extend(
+        [
             "## Feature Importance And Interpretability",
             "",
             "### Logistic Regression Coefficients",
@@ -295,6 +358,15 @@ def build_temporal_report(report_result, report_config, feature_search_result=No
         lines.extend([_dataframe_to_markdown(display_table), ""])
     else:
         lines.extend(["XGBoost feature importance was not available.", ""])
+
+    interpretability_visual_lines = _image_section_lines(
+        [
+            ("Logistic Coefficients", visual_paths.get("logistic_coefficients")),
+            ("XGBoost Feature Importance", visual_paths.get("xgboost_feature_importance")),
+        ]
+    )
+    if interpretability_visual_lines:
+        lines.extend(["## Visual Interpretability", ""] + interpretability_visual_lines)
 
     lines.extend(
         [
@@ -332,3 +404,16 @@ def _format_float(value):
 
 def _pretty_json(payload):
     return json.dumps(payload, indent=2)
+
+
+def _image_section_lines(image_specs):
+    lines = []
+    for title, path in image_specs:
+        if not path:
+            continue
+        lines.extend([f"### {title}", "", _image_markdown(title, path), ""])
+    return lines
+
+
+def _image_markdown(title, path):
+    return f"![{title}]({Path(path).resolve()})"

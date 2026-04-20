@@ -82,6 +82,56 @@ Lookup-source usage on the holdout and reserve outputs:
 | exact_segment | 199399 | active_snapshot |
 | grade_term | 713210 | active_snapshot |
 
+### LGD Diagnostic Summary
+
+| rows | mae | rmse | bias | correlation | avg_expected_lgd | avg_actual_lgd |
+| --- | --- | --- | --- | --- | --- | --- |
+| 48015 | 0.0692 | 0.0892 | -0.0405 | 0.0031 | 0.9011177467716552 | 0.9416539027069037 |
+
+### EAD Summary
+
+| scope | rows | mean | median | p90 | max |
+| --- | --- | --- | --- | --- | --- |
+| charged_off_ead_proxy | 268537 | 11170.0973 | 9502.7300 | 22507.5920 | 40000.0000 |
+| resolved_holdout_ead_reference | 225611 | 14445.9660 | 12000.0000 | 30000.0000 | 40000.0000 |
+| active_snapshot_ead_current | 912609 | 10467.6862 | 8390.5100 | 22878.2800 | 40000.0000 |
+
+### Recovery Summary
+
+| rows | mean_recovery_rate | median_recovery_rate | p90_recovery_rate | mean_net_recoveries |
+| --- | --- | --- | --- | --- |
+| 268537 | 0.0914 | 0.0846 | 0.1804 | 1008.0129 |
+
+## LGD And EAD Diagnostics
+
+### LGD Actual vs Expected
+
+![LGD Actual vs Expected](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/lgd_actual_vs_expected.png)
+
+### LGD Error Distribution
+
+![LGD Error Distribution](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/lgd_error_histogram.png)
+
+### LGD Distribution By Grade
+
+![LGD Distribution By Grade](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/lgd_by_grade.png)
+
+### EAD Distribution
+
+![EAD Distribution](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/ead_distribution.png)
+
+### Charged-Off EAD By Grade
+
+![Charged-Off EAD By Grade](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/ead_by_grade.png)
+
+### Recovery Rate Distribution
+
+![Recovery Rate Distribution](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/recovery_rate_distribution.png)
+
+### LGD Lookup Source Usage
+
+![LGD Lookup Source Usage](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/lgd_lookup_source.png)
+
 ## Hazard-Based Lifetime PD
 
 ### Hazard Panel Summary
@@ -127,37 +177,92 @@ Lookup-source usage on the holdout and reserve outputs:
 | 2017 | 168700 | 0.2285 | 0.2399 | 0.1616 | 0.0643 | test |
 | 2018 | 55773 | 0.1493 | 0.2219 | 0.1490 | 0.0581 | test |
 
+## Lifetime PD And CECL Visual Diagnostics
+
+Vintage calibration is shown as a point snapshot rather than an interpolated time-series line because only one validation vintage and two test vintages are available.
+
+### Hazard Calibration By Vintage
+
+![Hazard Calibration By Vintage](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/hazard_vintage_calibration.png)
+
+### Monthly Hazard Profile
+
+![Monthly Hazard Profile](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/monthly_hazard_profile.png)
+
+### 12-Month PD vs Lifetime PD
+
+![12-Month PD vs Lifetime PD](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/active_pd_compare.png)
+
+### Remaining Term vs Lifetime PD
+
+![Remaining Term vs Lifetime PD](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/remaining_term_vs_lifetime_pd.png)
+
 ## Expected Loss Outputs
 
 | analysis_scope | pd_measure | loan_count | funded_amount | avg_pd | avg_lgd | avg_ead | avg_el | total_el | portfolio_el_share | actual_loss_amount | actual_loss_rate |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| resolved_test | 12m | 225611 | 3259168825.0000 | 0.2061 | 0.9011 | 14445.9660 | 2964.9725 | 668930402.1100 | 1.0000 | 616265196.9735968 | 0.1891 |
+| resolved_test | 12m | 225611 | 3259168825.0000 | 0.2057 | 0.9011 | 14445.9660 | 2958.9731 | 667576883.5728 | 1.0000 | 616265196.9735968 | 0.1891 |
 | resolved_test | lifetime | 225611 | 3259168825.0000 | 0.2357 | 0.9011 | 14445.9660 | 3242.0600 | 731444401.4999 | 1.0000 | 616265196.9735968 | 0.1891 |
-| active_snapshot | 12m | 912609 | 14591904925.0000 | 0.2059 | 0.9048 | 10467.6862 | 2137.0069 | 1950251727.2679 | 1.0000 |  | NA |
+| active_snapshot | 12m | 912609 | 14591904925.0000 | 0.2056 | 0.9048 | 10467.6862 | 2132.6112 | 1946240196.3477 | 1.0000 |  | NA |
 | active_snapshot | lifetime | 912609 | 14591904925.0000 | 0.1425 | 0.9048 | 10467.6862 | 1643.9742 | 1500305687.2018 | 1.0000 |  | NA |
+
+### Expected Loss Concentration Summary
+
+| analysis_scope | pd_measure | top_n | top_el_share |
+| --- | --- | --- | --- |
+| resolved_test | lifetime | 10 | 0.0003 |
+| resolved_test | lifetime | 100 | 0.0031 |
+| resolved_test | lifetime | 1000 | 0.0261 |
+| active_snapshot | lifetime | 10 | 0.0001 |
+| active_snapshot | lifetime | 100 | 0.0013 |
+| active_snapshot | lifetime | 1000 | 0.0103 |
 
 ### Fixed-Horizon PD Input For 12-Month EL
 
 - Locked stage-2 model: `HistGradientBoosting`
 - Prediction source: `locked_stage2_model`
 - Rows scored with the fixed-horizon model: `1138220`
-- Mean fixed-horizon PD across scored rows: `0.2059`
+- Mean fixed-horizon PD across scored rows: `0.2056`
 - Used as the 12-month EL PD input: `True`
+
+## Expected Loss Visual Summary
+
+Absolute EL charts are separated by scope and paired with normalized views. The direct predicted-versus-actual comparison is limited to the resolved 12-month holdout so the horizon remains matched.
+
+### Portfolio Expected Loss By Scope (Absolute And Normalized)
+
+![Portfolio Expected Loss By Scope (Absolute And Normalized)](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/portfolio_el_comparison.png)
+
+### Matched-Horizon Loss Comparison
+
+![Matched-Horizon Loss Comparison](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/predicted_vs_actual_loss.png)
+
+### Normalized Expected Loss Components
+
+![Normalized Expected Loss Components](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/el_component_summary.png)
+
+### Top Active Loans By Lifetime EL
+
+![Top Active Loans By Lifetime EL](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/top_expected_loss_loans.png)
+
+### Expected Loss Concentration Curve
+
+![Expected Loss Concentration Curve](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/el_concentration_curve.png)
 
 ### Holdout Loan-Level Examples
 
 | sample_id | issue_date | loan_status | stage2_champion_pd | pd_12m_fixed_horizon | pd_12m_hazard | lifetime_pd_hazard | expected_lgd | ead_reference | expected_loss_12m | expected_loss_lifetime | actual_net_loss |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1718632 | 2017-01-01 00:00:00 | Fully Paid | 0.0851 | 0.0851 | 0.0213 | 0.0789 | 0.9003 | 15000.0000 | 1149.8269 | 1065.3661 | 0.0000 |
-| 1718640 | 2017-01-01 00:00:00 | Fully Paid | 0.2431 | 0.2431 | 0.0656 | 0.2278 | 0.8983 | 21000.0000 | 4585.1894 | 4297.4187 | 0.0000 |
-| 1718647 | 2017-01-01 00:00:00 | Fully Paid | 0.1237 | 0.1237 | 0.0652 | 0.2264 | 0.8983 | 17000.0000 | 1889.3100 | 3457.5101 | 0.0000 |
-| 1718651 | 2017-01-01 00:00:00 | Fully Paid | 0.3133 | 0.3133 | 0.1144 | 0.4945 | 0.9040 | 30000.0000 | 8496.9591 | 13411.1463 | 0.0000 |
-| 1718653 | 2017-01-01 00:00:00 | Fully Paid | 0.2050 | 0.2050 | 0.0974 | 0.3230 | 0.8969 | 2000.0000 | 367.7503 | 579.4760 | 0.0000 |
-| 1718655 | 2017-01-01 00:00:00 | Fully Paid | 0.2117 | 0.2117 | 0.0822 | 0.2785 | 0.8983 | 10000.0000 | 1901.6905 | 2502.1856 | 0.0000 |
-| 1718665 | 2017-01-01 00:00:00 | Fully Paid | 0.2367 | 0.2367 | 0.0666 | 0.3210 | 0.9085 | 21600.0000 | 4644.3564 | 6298.9725 | 0.0000 |
-| 1718669 | 2017-01-01 00:00:00 | Fully Paid | 0.1200 | 0.1200 | 0.0595 | 0.2083 | 0.8983 | 15000.0000 | 1617.3910 | 2807.3464 | 0.0000 |
-| 1718670 | 2017-01-01 00:00:00 | Fully Paid | 0.0834 | 0.0834 | 0.0345 | 0.1251 | 0.9000 | 4000.0000 | 300.3027 | 450.3651 | 0.0000 |
-| 1718672 | 2017-01-01 00:00:00 | Fully Paid | 0.0440 | 0.0440 | 0.0213 | 0.0789 | 0.9003 | 6000.0000 | 237.6879 | 426.1464 | 0.0000 |
+| 1718632 | 2017-01-01 00:00:00 | Fully Paid | 0.0893 | 0.0893 | 0.0213 | 0.0789 | 0.9003 | 15000.0000 | 1206.0296 | 1065.3661 | 0.0000 |
+| 1718640 | 2017-01-01 00:00:00 | Fully Paid | 0.2372 | 0.2372 | 0.0656 | 0.2278 | 0.8983 | 21000.0000 | 4474.3114 | 4297.4187 | 0.0000 |
+| 1718647 | 2017-01-01 00:00:00 | Fully Paid | 0.1219 | 0.1219 | 0.0652 | 0.2264 | 0.8983 | 17000.0000 | 1861.9152 | 3457.5101 | 0.0000 |
+| 1718651 | 2017-01-01 00:00:00 | Fully Paid | 0.3486 | 0.3486 | 0.1144 | 0.4945 | 0.9040 | 30000.0000 | 9452.5645 | 13411.1463 | 0.0000 |
+| 1718653 | 2017-01-01 00:00:00 | Fully Paid | 0.2037 | 0.2037 | 0.0974 | 0.3230 | 0.8969 | 2000.0000 | 365.4091 | 579.4760 | 0.0000 |
+| 1718655 | 2017-01-01 00:00:00 | Fully Paid | 0.2188 | 0.2188 | 0.0822 | 0.2785 | 0.8983 | 10000.0000 | 1965.1310 | 2502.1856 | 0.0000 |
+| 1718665 | 2017-01-01 00:00:00 | Fully Paid | 0.2315 | 0.2315 | 0.0666 | 0.3210 | 0.9085 | 21600.0000 | 4542.1149 | 6298.9725 | 0.0000 |
+| 1718669 | 2017-01-01 00:00:00 | Fully Paid | 0.1187 | 0.1187 | 0.0595 | 0.2083 | 0.8983 | 15000.0000 | 1599.9479 | 2807.3464 | 0.0000 |
+| 1718670 | 2017-01-01 00:00:00 | Fully Paid | 0.0765 | 0.0765 | 0.0345 | 0.1251 | 0.9000 | 4000.0000 | 275.3576 | 450.3651 | 0.0000 |
+| 1718672 | 2017-01-01 00:00:00 | Fully Paid | 0.0425 | 0.0425 | 0.0213 | 0.0789 | 0.9003 | 6000.0000 | 229.4670 | 426.1464 | 0.0000 |
 
 ## CECL Proxy And Reserve Snapshot
 
@@ -167,16 +272,16 @@ The reserve view combines lifetime PD from the hazard model with credibility-wei
 
 | sample_id | issue_date | loan_status | remaining_term | stage2_champion_pd | pd_12m_fixed_horizon | pd_12m_hazard | lifetime_pd_hazard | expected_lgd | ead_current | expected_loss_12m | lifetime_expected_loss |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1781187 | 2013-10-01 00:00:00 | Current | 0.0 | 0.3774 | 0.3774 | 0.0000 | 0.0000 | 0.8851 | 125.0500 | 41.7710 | 0.0000 |
-| 1790999 | 2013-10-01 00:00:00 | Current | 0.0 | 0.3475 | 0.3475 | 0.0000 | 0.0000 | 0.8882 | 13730.7023 | 4238.2050 | 0.0000 |
-| 1751337 | 2013-12-01 00:00:00 | Late (31-120 days) | 0.0 | 0.4136 | 0.4136 | 0.0000 | 0.0000 | 0.8882 | 11.1900 | 4.1102 | 0.0000 |
-| 1753200 | 2013-12-01 00:00:00 | Late (31-120 days) | 1.0 | 0.4073 | 0.4073 | 0.0097 | 0.0097 | 0.8823 | 286.3600 | 102.8975 | 2.4451 |
-| 1754434 | 2013-12-01 00:00:00 | Current | 0.0 | 0.2638 | 0.2638 | 0.0000 | 0.0000 | 0.8851 | 1615.5400 | 377.2740 | 0.0000 |
-| 1760475 | 2013-12-01 00:00:00 | In Grace Period | 0.0 | 0.3316 | 0.3316 | 0.0000 | 0.0000 | 0.8882 | 553.5300 | 162.9990 | 0.0000 |
-| 1761504 | 2013-12-01 00:00:00 | Current | 0.0 | 0.2842 | 0.2842 | 0.0000 | 0.0000 | 0.8851 | 931.3100 | 234.2704 | 0.0000 |
-| 1761719 | 2013-12-01 00:00:00 | Current | 0.0 | 0.1301 | 0.1301 | 0.0000 | 0.0000 | 0.8882 | 10314.2289 | 1191.4102 | 0.0000 |
-| 1761741 | 2013-12-01 00:00:00 | Current | 0.0 | 0.6356 | 0.6356 | 0.0000 | 0.0000 | 0.8777 | 507.2800 | 282.9676 | 0.0000 |
-| 1763190 | 2013-12-01 00:00:00 | Late (31-120 days) | 0.0 | 0.1758 | 0.1758 | 0.0000 | 0.0000 | 0.8878 | 803.5500 | 125.4105 | 0.0000 |
+| 1781187 | 2013-10-01 00:00:00 | Current | 0.0 | 0.3871 | 0.3871 | 0.0000 | 0.0000 | 0.8851 | 125.0500 | 42.8477 | 0.0000 |
+| 1790999 | 2013-10-01 00:00:00 | Current | 0.0 | 0.3278 | 0.3278 | 0.0000 | 0.0000 | 0.8882 | 13730.7023 | 3997.3220 | 0.0000 |
+| 1751337 | 2013-12-01 00:00:00 | Late (31-120 days) | 0.0 | 0.4311 | 0.4311 | 0.0000 | 0.0000 | 0.8882 | 11.1900 | 4.2844 | 0.0000 |
+| 1753200 | 2013-12-01 00:00:00 | Late (31-120 days) | 1.0 | 0.4182 | 0.4182 | 0.0097 | 0.0097 | 0.8823 | 286.3600 | 105.6628 | 2.4451 |
+| 1754434 | 2013-12-01 00:00:00 | Current | 0.0 | 0.2665 | 0.2665 | 0.0000 | 0.0000 | 0.8851 | 1615.5400 | 381.0488 | 0.0000 |
+| 1760475 | 2013-12-01 00:00:00 | In Grace Period | 0.0 | 0.3317 | 0.3317 | 0.0000 | 0.0000 | 0.8882 | 553.5300 | 163.0786 | 0.0000 |
+| 1761504 | 2013-12-01 00:00:00 | Current | 0.0 | 0.2764 | 0.2764 | 0.0000 | 0.0000 | 0.8851 | 931.3100 | 227.8012 | 0.0000 |
+| 1761719 | 2013-12-01 00:00:00 | Current | 0.0 | 0.1286 | 0.1286 | 0.0000 | 0.0000 | 0.8882 | 10314.2289 | 1178.0259 | 0.0000 |
+| 1761741 | 2013-12-01 00:00:00 | Current | 0.0 | 0.6342 | 0.6342 | 0.0000 | 0.0000 | 0.8777 | 507.2800 | 282.3689 | 0.0000 |
+| 1763190 | 2013-12-01 00:00:00 | Late (31-120 days) | 0.0 | 0.1815 | 0.1815 | 0.0000 | 0.0000 | 0.8878 | 803.5500 | 129.4827 | 0.0000 |
 
 ## Risk Segmentation Analysis
 
@@ -186,32 +291,32 @@ The management-facing cuts in this phase are `grade, fico_bucket, term_months, i
 
 | segment_value | loan_count | funded_amount | avg_pd | avg_lgd | avg_ead | avg_el | total_el | segment_type | analysis_scope | pd_measure | portfolio_el_share |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 50-100k | 112648 | 1600802175.0000 | 0.2064 | 0.9013 | 14210.6578 | 3065.5506 | 345328145.8159 | annual_income_band | resolved_test | 12m | 0.5162 |
-| <50k | 61345 | 594303200.0000 | 0.2364 | 0.9001 | 9687.8833 | 2387.1196 | 146437853.8193 | annual_income_band | resolved_test | 12m | 0.2189 |
-| 100-150k | 35064 | 676464750.0000 | 0.1781 | 0.9020 | 19292.2870 | 3469.1850 | 121643502.8226 | annual_income_band | resolved_test | 12m | 0.1818 |
-| 150k+ | 16554 | 387598700.0000 | 0.1510 | 0.9023 | 23414.2020 | 3353.9265 | 55520899.6522 | annual_income_band | resolved_test | 12m | 0.0830 |
-| fair | 123292 | 1702880850.0000 | 0.2491 | 0.9003 | 13811.7708 | 3456.3352 | 426138474.7595 | fico_bucket | resolved_test | 12m | 0.6370 |
-| good | 67427 | 1030603600.0000 | 0.1786 | 0.9018 | 15284.7316 | 2723.6154 | 183645217.7261 | fico_bucket | resolved_test | 12m | 0.2745 |
-| very_good | 34892 | 525684375.0000 | 0.1071 | 0.9027 | 15066.0431 | 1695.1367 | 59146709.6244 | fico_bucket | resolved_test | 12m | 0.0884 |
-| C | 69668 | 1021352375.0000 | 0.2272 | 0.9015 | 14660.2798 | 3185.3844 | 221919357.5729 | grade | resolved_test | 12m | 0.3318 |
-| D | 34186 | 530616225.0000 | 0.3213 | 0.9003 | 15521.4481 | 4798.3878 | 164037684.8648 | grade | resolved_test | 12m | 0.2452 |
-| B | 62229 | 831078825.0000 | 0.1380 | 0.9020 | 13355.1692 | 1735.8152 | 108018044.3500 | grade | resolved_test | 12m | 0.1615 |
-| E | 13242 | 221467875.0000 | 0.4156 | 0.8992 | 16724.6545 | 6635.8212 | 87871544.3724 | grade | resolved_test | 12m | 0.1314 |
-| F | 4309 | 82582400.0000 | 0.4961 | 0.8987 | 19165.0963 | 8751.4936 | 37710186.0107 | grade | resolved_test | 12m | 0.0564 |
-| 2017 | 169300 | 2421184400.0000 | 0.2092 | 0.9010 | 14301.1483 | 2977.5692 | 504102473.5258 | issue_year | resolved_test | 12m | 0.7536 |
-| 2018 | 56311 | 837984425.0000 | 0.1969 | 0.9016 | 14881.3629 | 2927.1000 | 164827928.5843 | issue_year | resolved_test | 12m | 0.2464 |
-| 2017Q1 | 46871 | 680667100.0000 | 0.2091 | 0.9007 | 14522.1374 | 2972.5872 | 139328136.8419 | issue_year_quarter | resolved_test | 12m | 0.2083 |
-| 2017Q3 | 43848 | 615148275.0000 | 0.2146 | 0.9010 | 14029.1068 | 3042.0225 | 133386601.5562 | issue_year_quarter | resolved_test | 12m | 0.1994 |
-| 2017Q2 | 44487 | 629368300.0000 | 0.2084 | 0.9009 | 14147.2408 | 2924.8733 | 130118839.3959 | issue_year_quarter | resolved_test | 12m | 0.1945 |
-| 2017Q4 | 34094 | 496000725.0000 | 0.2032 | 0.9015 | 14548.0356 | 2970.2850 | 101268895.7317 | issue_year_quarter | resolved_test | 12m | 0.1514 |
-| 2018Q1 | 22526 | 343417875.0000 | 0.1970 | 0.9017 | 15245.3998 | 2982.9005 | 67192817.7536 | issue_year_quarter | resolved_test | 12m | 0.1004 |
-| debt_consolidation | 123773 | 1929492075.0000 | 0.2218 | 0.9012 | 15588.9578 | 3369.2346 | 417020274.4825 | purpose_group | resolved_test | 12m | 0.6234 |
-| credit_card | 43671 | 624033700.0000 | 0.1857 | 0.9013 | 14289.4301 | 2621.4962 | 114483361.9008 | purpose_group | resolved_test | 12m | 0.1711 |
-| other | 33800 | 358913250.0000 | 0.1954 | 0.9002 | 10618.7352 | 2191.0740 | 74058302.2945 | purpose_group | resolved_test | 12m | 0.1107 |
-| home_improvement | 18271 | 265412300.0000 | 0.1737 | 0.9016 | 14526.4244 | 2560.9091 | 46790370.2001 | purpose_group | resolved_test | 12m | 0.0699 |
-| major_purchase | 6096 | 81317500.0000 | 0.1905 | 0.9012 | 13339.4849 | 2719.5035 | 16578093.2321 | purpose_group | resolved_test | 12m | 0.0248 |
-| 60 | 55805 | 1178433175.0000 | 0.3301 | 0.9078 | 21116.9819 | 6238.5804 | 348143977.5437 | term_months | resolved_test | 12m | 0.5204 |
-| 36 | 169806 | 2080735650.0000 | 0.1653 | 0.8989 | 12253.6050 | 1889.1348 | 320786424.5663 | term_months | resolved_test | 12m | 0.4796 |
+| 50-100k | 112648 | 1600802175.0000 | 0.2060 | 0.9013 | 14210.6578 | 3058.5860 | 344543596.8022 | annual_income_band | resolved_test | 12m | 0.5161 |
+| <50k | 61345 | 594303200.0000 | 0.2360 | 0.9001 | 9687.8833 | 2381.9629 | 146121515.4007 | annual_income_band | resolved_test | 12m | 0.2189 |
+| 100-150k | 35064 | 676464750.0000 | 0.1780 | 0.9020 | 19292.2870 | 3465.8873 | 121527870.9009 | annual_income_band | resolved_test | 12m | 0.1820 |
+| 150k+ | 16554 | 387598700.0000 | 0.1507 | 0.9023 | 23414.2020 | 3345.6506 | 55383900.4690 | annual_income_band | resolved_test | 12m | 0.0830 |
+| fair | 123292 | 1702880850.0000 | 0.2487 | 0.9003 | 13811.7708 | 3449.2842 | 425269151.4268 | fico_bucket | resolved_test | 12m | 0.6370 |
+| good | 67427 | 1030603600.0000 | 0.1783 | 0.9018 | 15284.7316 | 2716.2506 | 183148630.1544 | fico_bucket | resolved_test | 12m | 0.2743 |
+| very_good | 34892 | 525684375.0000 | 0.1070 | 0.9027 | 15066.0431 | 1695.4919 | 59159101.9916 | fico_bucket | resolved_test | 12m | 0.0886 |
+| C | 69668 | 1021352375.0000 | 0.2264 | 0.9015 | 14660.2798 | 3173.4508 | 221087968.0262 | grade | resolved_test | 12m | 0.3312 |
+| D | 34186 | 530616225.0000 | 0.3209 | 0.9003 | 15521.4481 | 4791.3504 | 163797105.1871 | grade | resolved_test | 12m | 0.2454 |
+| B | 62229 | 831078825.0000 | 0.1377 | 0.9020 | 13355.1692 | 1732.1704 | 107791233.7083 | grade | resolved_test | 12m | 0.1615 |
+| E | 13242 | 221467875.0000 | 0.4147 | 0.8992 | 16724.6545 | 6619.6520 | 87657431.6580 | grade | resolved_test | 12m | 0.1313 |
+| F | 4309 | 82582400.0000 | 0.4958 | 0.8987 | 19165.0963 | 8739.2399 | 37657384.5757 | grade | resolved_test | 12m | 0.0564 |
+| 2017 | 169300 | 2421184400.0000 | 0.2088 | 0.9010 | 14301.1483 | 2971.7263 | 503113255.6941 | issue_year | resolved_test | 12m | 0.7536 |
+| 2018 | 56311 | 837984425.0000 | 0.1965 | 0.9016 | 14881.3629 | 2920.6306 | 164463627.8787 | issue_year | resolved_test | 12m | 0.2464 |
+| 2017Q1 | 46871 | 680667100.0000 | 0.2089 | 0.9007 | 14522.1374 | 2968.6516 | 139143669.1568 | issue_year_quarter | resolved_test | 12m | 0.2084 |
+| 2017Q3 | 43848 | 615148275.0000 | 0.2141 | 0.9010 | 14029.1068 | 3032.9576 | 132989124.2556 | issue_year_quarter | resolved_test | 12m | 0.1992 |
+| 2017Q2 | 44487 | 629368300.0000 | 0.2081 | 0.9009 | 14147.2408 | 2919.0067 | 129857851.7523 | issue_year_quarter | resolved_test | 12m | 0.1945 |
+| 2017Q4 | 34094 | 496000725.0000 | 0.2029 | 0.9015 | 14548.0356 | 2965.9943 | 101122610.5295 | issue_year_quarter | resolved_test | 12m | 0.1515 |
+| 2018Q1 | 22526 | 343417875.0000 | 0.1967 | 0.9017 | 15245.3998 | 2976.6805 | 67052704.9212 | issue_year_quarter | resolved_test | 12m | 0.1004 |
+| debt_consolidation | 123773 | 1929492075.0000 | 0.2214 | 0.9012 | 15588.9578 | 3362.1931 | 416148729.3680 | purpose_group | resolved_test | 12m | 0.6234 |
+| credit_card | 43671 | 624033700.0000 | 0.1854 | 0.9013 | 14289.4301 | 2617.1141 | 114291992.0221 | purpose_group | resolved_test | 12m | 0.1712 |
+| other | 33800 | 358913250.0000 | 0.1950 | 0.9002 | 10618.7352 | 2184.4329 | 73833831.1862 | purpose_group | resolved_test | 12m | 0.1106 |
+| home_improvement | 18271 | 265412300.0000 | 0.1736 | 0.9016 | 14526.4244 | 2559.7846 | 46769823.5366 | purpose_group | resolved_test | 12m | 0.0701 |
+| major_purchase | 6096 | 81317500.0000 | 0.1898 | 0.9012 | 13339.4849 | 2712.0255 | 16532507.4599 | purpose_group | resolved_test | 12m | 0.0248 |
+| 60 | 55805 | 1178433175.0000 | 0.3297 | 0.9078 | 21116.9819 | 6232.4480 | 347801759.5193 | term_months | resolved_test | 12m | 0.5210 |
+| 36 | 169806 | 2080735650.0000 | 0.1650 | 0.8989 | 12253.6050 | 1883.1792 | 319775124.0535 | term_months | resolved_test | 12m | 0.4790 |
 | 50-100k | 112648 | 1600802175.0000 | 0.2400 | 0.9013 | 14210.6578 | 3390.6479 | 381949702.8483 | annual_income_band | resolved_test | lifetime | 0.5222 |
 | <50k | 61345 | 594303200.0000 | 0.2627 | 0.9001 | 9687.8833 | 2516.5934 | 154380419.7996 | annual_income_band | resolved_test | lifetime | 0.2111 |
 | 100-150k | 35064 | 676464750.0000 | 0.2030 | 0.9020 | 19292.2870 | 3780.7728 | 132569018.6328 | annual_income_band | resolved_test | lifetime | 0.1812 |
@@ -243,35 +348,35 @@ The management-facing cuts in this phase are `grade, fico_bucket, term_months, i
 
 | segment_value | loan_count | funded_amount | avg_pd | avg_lgd | avg_ead | avg_el | total_el | segment_type | analysis_scope | pd_measure | portfolio_el_share |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 50-100k | 446013 | 7067911725.0000 | 0.2069 | 0.9051 | 10317.2811 | 2210.4874 | 985906124.9991 | annual_income_band | active_snapshot | 12m | 0.5055 |
-| <50k | 249876 | 2694397000.0000 | 0.2381 | 0.9032 | 7170.8603 | 1788.2338 | 446836704.0075 | annual_income_band | active_snapshot | 12m | 0.2291 |
-| 100-150k | 143015 | 2994228925.0000 | 0.1746 | 0.9061 | 13720.2669 | 2400.2641 | 343273775.2039 | annual_income_band | active_snapshot | 12m | 0.1760 |
-| 150k+ | 73705 | 1835367275.0000 | 0.1513 | 0.9060 | 16243.5829 | 2363.9526 | 174235123.0574 | annual_income_band | active_snapshot | 12m | 0.0893 |
-| fair | 482110 | 7207720450.0000 | 0.2508 | 0.9041 | 9518.5603 | 2419.4078 | 1166420686.0481 | fico_bucket | active_snapshot | 12m | 0.5981 |
-| good | 293792 | 5045942275.0000 | 0.1783 | 0.9055 | 11387.8637 | 2043.1199 | 600252275.7779 | fico_bucket | active_snapshot | 12m | 0.3078 |
-| very_good | 136707 | 2338242200.0000 | 0.1068 | 0.9060 | 11837.3473 | 1342.8630 | 183578765.4419 | fico_bucket | active_snapshot | 12m | 0.0941 |
-| C | 267738 | 4354352175.0000 | 0.2505 | 0.9053 | 10674.7606 | 2599.4078 | 695960255.7692 | grade | active_snapshot | 12m | 0.3569 |
-| D | 122780 | 2022465125.0000 | 0.3476 | 0.9039 | 11194.1378 | 3779.4191 | 464037075.5692 | grade | active_snapshot | 12m | 0.2379 |
-| B | 270462 | 4202846950.0000 | 0.1537 | 0.9058 | 9942.6817 | 1500.4265 | 405808345.8469 | grade | active_snapshot | 12m | 0.2081 |
-| E | 41453 | 712857775.0000 | 0.4227 | 0.9031 | 11030.8005 | 4497.5086 | 186435225.3320 | grade | active_snapshot | 12m | 0.0956 |
-| A | 197839 | 3057105525.0000 | 0.0651 | 0.9041 | 10176.1029 | 621.7431 | 123005041.7705 | grade | active_snapshot | 12m | 0.0631 |
-| 2018 | 438931 | 7098278725.0000 | 0.1942 | 0.9028 | 13579.4969 | 2600.9854 | 1141653140.2795 | issue_year | active_snapshot | 12m | 0.5854 |
-| 2017 | 274279 | 4163772675.0000 | 0.1999 | 0.9021 | 9065.4904 | 1908.6345 | 523498365.9371 | issue_year | active_snapshot | 12m | 0.2684 |
-| 2016 | 141312 | 2160296550.0000 | 0.2113 | 0.9153 | 5358.6042 | 1328.5922 | 187746017.7979 | issue_year | active_snapshot | 12m | 0.0963 |
-| 2015 | 45550 | 919042025.0000 | 0.3067 | 0.9111 | 6940.9285 | 1937.6770 | 88261188.7035 | issue_year | active_snapshot | 12m | 0.0453 |
-| 2014 | 12527 | 250362675.0000 | 0.3178 | 0.8967 | 2598.0339 | 725.3335 | 9086253.2344 | issue_year | active_snapshot | 12m | 0.0047 |
-| 2018Q4 | 123382 | 1980878050.0000 | 0.1975 | 0.9031 | 14806.2035 | 2832.7627 | 349511923.1016 | issue_year_quarter | active_snapshot | 12m | 0.1792 |
-| 2018Q3 | 117886 | 1913733700.0000 | 0.1964 | 0.9028 | 14005.2633 | 2678.5909 | 315768364.1628 | issue_year_quarter | active_snapshot | 12m | 0.1619 |
-| 2018Q2 | 112325 | 1805303150.0000 | 0.1921 | 0.9025 | 12894.9546 | 2479.5401 | 278514346.1429 | issue_year_quarter | active_snapshot | 12m | 0.1428 |
-| 2018Q1 | 85338 | 1398363825.0000 | 0.1893 | 0.9026 | 12118.7855 | 2318.5276 | 197858506.8722 | issue_year_quarter | active_snapshot | 12m | 0.1015 |
-| 2017Q4 | 84554 | 1321353400.0000 | 0.1956 | 0.9025 | 10641.1332 | 2150.8778 | 181865317.2813 | issue_year_quarter | active_snapshot | 12m | 0.0933 |
-| debt_consolidation | 496456 | 8506278375.0000 | 0.2224 | 0.9051 | 11238.3910 | 2434.8230 | 1208782463.2652 | purpose_group | active_snapshot | 12m | 0.6198 |
-| credit_card | 221352 | 3543144225.0000 | 0.1812 | 0.9051 | 10468.1876 | 1864.0003 | 412600193.4388 | purpose_group | active_snapshot | 12m | 0.2116 |
-| other | 111165 | 1284960975.0000 | 0.1999 | 0.9030 | 7576.6031 | 1598.2282 | 177667033.3230 | purpose_group | active_snapshot | 12m | 0.0911 |
-| home_improvement | 62739 | 966921400.0000 | 0.1777 | 0.9050 | 9952.2009 | 1799.9420 | 112926562.7809 | purpose_group | active_snapshot | 12m | 0.0579 |
-| major_purchase | 20897 | 290599950.0000 | 0.1916 | 0.9042 | 9079.7479 | 1831.6253 | 38275474.4600 | purpose_group | active_snapshot | 12m | 0.0196 |
-| 60 | 326036 | 6904183575.0000 | 0.3038 | 0.9116 | 14972.3786 | 4061.1184 | 1324070803.9987 | term_months | active_snapshot | 12m | 0.6789 |
-| 36 | 586573 | 7687721350.0000 | 0.1515 | 0.9011 | 7963.8343 | 1067.5243 | 626180923.2692 | term_months | active_snapshot | 12m | 0.3211 |
+| 50-100k | 446013 | 7067911725.0000 | 0.2066 | 0.9051 | 10317.2811 | 2204.8853 | 983407512.6445 | annual_income_band | active_snapshot | 12m | 0.5053 |
+| <50k | 249876 | 2694397000.0000 | 0.2377 | 0.9032 | 7170.8603 | 1785.2450 | 446089879.2853 | annual_income_band | active_snapshot | 12m | 0.2292 |
+| 100-150k | 143015 | 2994228925.0000 | 0.1745 | 0.9061 | 13720.2669 | 2398.2378 | 342983985.3989 | annual_income_band | active_snapshot | 12m | 0.1762 |
+| 150k+ | 73705 | 1835367275.0000 | 0.1510 | 0.9060 | 16243.5829 | 2357.4903 | 173758819.0190 | annual_income_band | active_snapshot | 12m | 0.0893 |
+| fair | 482110 | 7207720450.0000 | 0.2504 | 0.9041 | 9518.5603 | 2414.6694 | 1164136255.9468 | fico_bucket | active_snapshot | 12m | 0.5981 |
+| good | 293792 | 5045942275.0000 | 0.1779 | 0.9055 | 11387.8637 | 2038.0496 | 598762663.2426 | fico_bucket | active_snapshot | 12m | 0.3077 |
+| very_good | 136707 | 2338242200.0000 | 0.1067 | 0.9060 | 11837.3473 | 1341.1257 | 183341277.1583 | fico_bucket | active_snapshot | 12m | 0.0942 |
+| C | 267738 | 4354352175.0000 | 0.2498 | 0.9053 | 10674.7606 | 2592.4710 | 694102988.3976 | grade | active_snapshot | 12m | 0.3566 |
+| D | 122780 | 2022465125.0000 | 0.3470 | 0.9039 | 11194.1378 | 3771.4887 | 463063379.7553 | grade | active_snapshot | 12m | 0.2379 |
+| B | 270462 | 4202846950.0000 | 0.1533 | 0.9058 | 9942.6817 | 1496.1924 | 404663200.3215 | grade | active_snapshot | 12m | 0.2079 |
+| E | 41453 | 712857775.0000 | 0.4229 | 0.9031 | 11030.8005 | 4493.5045 | 186269242.9228 | grade | active_snapshot | 12m | 0.0957 |
+| A | 197839 | 3057105525.0000 | 0.0653 | 0.9041 | 10176.1029 | 622.7849 | 123211149.3304 | grade | active_snapshot | 12m | 0.0633 |
+| 2018 | 438931 | 7098278725.0000 | 0.1938 | 0.9028 | 13579.4969 | 2594.4531 | 1138785891.8766 | issue_year | active_snapshot | 12m | 0.5851 |
+| 2017 | 274279 | 4163772675.0000 | 0.1996 | 0.9021 | 9065.4904 | 1905.5710 | 522658100.1614 | issue_year | active_snapshot | 12m | 0.2685 |
+| 2016 | 141312 | 2160296550.0000 | 0.2112 | 0.9153 | 5358.6042 | 1327.3419 | 187569336.8030 | issue_year | active_snapshot | 12m | 0.0964 |
+| 2015 | 45550 | 919042025.0000 | 0.3063 | 0.9111 | 6940.9285 | 1934.9665 | 88137723.0904 | issue_year | active_snapshot | 12m | 0.0453 |
+| 2014 | 12527 | 250362675.0000 | 0.3176 | 0.8967 | 2598.0339 | 725.0445 | 9082632.4933 | issue_year | active_snapshot | 12m | 0.0047 |
+| 2018Q4 | 123382 | 1980878050.0000 | 0.1969 | 0.9031 | 14806.2035 | 2822.1396 | 348201223.1320 | issue_year_quarter | active_snapshot | 12m | 0.1789 |
+| 2018Q3 | 117886 | 1913733700.0000 | 0.1959 | 0.9028 | 14005.2633 | 2670.4222 | 314805388.4773 | issue_year_quarter | active_snapshot | 12m | 0.1618 |
+| 2018Q2 | 112325 | 1805303150.0000 | 0.1919 | 0.9025 | 12894.9546 | 2475.6975 | 278082725.0774 | issue_year_quarter | active_snapshot | 12m | 0.1429 |
+| 2018Q1 | 85338 | 1398363825.0000 | 0.1892 | 0.9026 | 12118.7855 | 2316.6298 | 197696555.1899 | issue_year_quarter | active_snapshot | 12m | 0.1016 |
+| 2017Q4 | 84554 | 1321353400.0000 | 0.1954 | 0.9025 | 10641.1332 | 2148.2124 | 181639948.1271 | issue_year_quarter | active_snapshot | 12m | 0.0933 |
+| debt_consolidation | 496456 | 8506278375.0000 | 0.2221 | 0.9051 | 11238.3910 | 2429.7840 | 1206280859.8053 | purpose_group | active_snapshot | 12m | 0.6198 |
+| credit_card | 221352 | 3543144225.0000 | 0.1808 | 0.9051 | 10468.1876 | 1859.9491 | 411703463.0887 | purpose_group | active_snapshot | 12m | 0.2115 |
+| other | 111165 | 1284960975.0000 | 0.1996 | 0.9030 | 7576.6031 | 1593.9097 | 177186976.3558 | purpose_group | active_snapshot | 12m | 0.0910 |
+| home_improvement | 62739 | 966921400.0000 | 0.1778 | 0.9050 | 9952.2009 | 1799.8469 | 112920597.5896 | purpose_group | active_snapshot | 12m | 0.0580 |
+| major_purchase | 20897 | 290599950.0000 | 0.1910 | 0.9042 | 9079.7479 | 1825.5395 | 38148299.5084 | purpose_group | active_snapshot | 12m | 0.0196 |
+| 60 | 326036 | 6904183575.0000 | 0.3034 | 0.9116 | 14972.3786 | 4055.6275 | 1322280570.6674 | term_months | active_snapshot | 12m | 0.6794 |
+| 36 | 586573 | 7687721350.0000 | 0.1512 | 0.9011 | 7963.8343 | 1063.7374 | 623959625.6803 | term_months | active_snapshot | 12m | 0.3206 |
 | 50-100k | 446013 | 7067911725.0000 | 0.1445 | 0.9051 | 10317.2811 | 1708.9035 | 762193196.9272 | annual_income_band | active_snapshot | lifetime | 0.5080 |
 | <50k | 249876 | 2694397000.0000 | 0.1617 | 0.9032 | 7170.8603 | 1364.4442 | 340941869.4187 | annual_income_band | active_snapshot | lifetime | 0.2272 |
 | 100-150k | 143015 | 2994228925.0000 | 0.1208 | 0.9061 | 13720.2669 | 1822.8611 | 260696487.1847 | annual_income_band | active_snapshot | lifetime | 0.1738 |
@@ -301,6 +406,28 @@ The management-facing cuts in this phase are `grade, fico_bucket, term_months, i
 | major_purchase | 20897 | 290599950.0000 | 0.1357 | 0.9042 | 9079.7479 | 1378.9347 | 28815599.3725 | purpose_group | active_snapshot | lifetime | 0.0192 |
 | 60 | 326036 | 6904183575.0000 | 0.2000 | 0.9116 | 14972.3786 | 3021.3111 | 985056171.9354 | term_months | active_snapshot | lifetime | 0.6566 |
 | 36 | 586573 | 7687721350.0000 | 0.1106 | 0.9011 | 7963.8343 | 878.4065 | 515249515.2663 | term_months | active_snapshot | lifetime | 0.3434 |
+
+## Risk Segmentation Dashboards
+
+### Lifetime Expected Loss By Grade
+
+![Lifetime Expected Loss By Grade](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/segment_el_by_grade.png)
+
+### Lifetime Expected Loss Share By Purpose Group
+
+![Lifetime Expected Loss Share By Purpose Group](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/segment_share_by_purpose.png)
+
+### Expected Loss Trend By Quarter
+
+![Expected Loss Trend By Quarter](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/vintage_el_trend.png)
+
+### Grade x Term Heatmap
+
+![Grade x Term Heatmap](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/grade_term_heatmap.png)
+
+### Grade x FICO Heatmap
+
+![Grade x FICO Heatmap](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/loss_reserve/grade_fico_heatmap.png)
 
 ## Next-Phase Bridge
 

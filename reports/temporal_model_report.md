@@ -178,10 +178,26 @@ Grid search space:
 
 | validation_rank | model_name | search_mode | search_candidates | params | validation_auc | validation_ks | validation_brier | calibration_summary |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | XGBoost | grid_search | 4 | {"colsample_bytree": 0.8, "learning_rate": 0.05, "max_depth": 6, "min_child_weight": 5, "n_estimators": 120, "n_jobs": -1, "random_state": 42, "reg_lambda": 1.0, "subsample": 0.8} | 0.7151 | 0.3123 | 0.1628 | Visible calibration drift; inspect the curve before finalizing. |
-| 2 | HistGradientBoosting | grid_search | 4 | {"early_stopping": false, "l2_regularization": 0.0, "learning_rate": 0.05, "max_depth": 6, "max_iter": 150, "max_leaf_nodes": 31, "min_samples_leaf": 50} | 0.7151 | 0.3123 | 0.1628 | Underestimates risk in the highest-PD bins. |
+| 1 | HistGradientBoosting | grid_search | 4 | {"early_stopping": false, "l2_regularization": 0.0, "learning_rate": 0.05, "max_depth": 6, "max_iter": 150, "max_leaf_nodes": 31, "min_samples_leaf": 50} | 0.7152 | 0.3131 | 0.1627 | Underestimates risk in the highest-PD bins. |
+| 2 | XGBoost | grid_search | 4 | {"colsample_bytree": 0.8, "learning_rate": 0.05, "max_depth": 6, "min_child_weight": 5, "n_estimators": 120, "n_jobs": -1, "random_state": 42, "reg_lambda": 1.0, "subsample": 0.8} | 0.7151 | 0.3123 | 0.1628 | Visible calibration drift; inspect the curve before finalizing. |
 | 3 | Logistic Regression | grid_search | 4 | {"C": 2.0, "class_weight": "balanced", "max_iter": 1000} | 0.7115 | 0.3070 | 0.2118 | Overestimates risk in the highest-PD bins. |
 | 4 | Random Forest | grid_search | 4 | {"max_depth": 14, "max_features": "sqrt", "min_samples_leaf": 25, "min_samples_split": 100, "n_estimators": 120, "n_jobs": -1, "random_state": 42} | 0.7111 | 0.3056 | 0.1641 | Underestimates risk in the highest-PD bins. |
+
+## Validation Visual Diagnostics
+
+Calibration markers are sized by bin count so sparse tail bins are visually distinguishable from dense central bins.
+
+### Observed Default Rate Trend
+
+![Observed Default Rate Trend](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/temporal_model/default_rate_trend.png)
+
+### Validation ROC Comparison
+
+![Validation ROC Comparison](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/temporal_model/validation_roc_comparison.png)
+
+### Validation Reliability Diagram
+
+![Validation Reliability Diagram](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/temporal_model/validation_calibration_comparison.png)
 
 ## Grid Search Results
 
@@ -195,10 +211,10 @@ Grid search space:
 | Random Forest | 2 | {"max_depth": 14, "max_features": "sqrt", "min_samples_leaf": 25, "min_samples_split": 100, "n_estimators": 80, "n_jobs": -1, "random_state": 42} | 0.7109 | 0.3057 | 0.1641 |
 | Random Forest | 3 | {"max_depth": 10, "max_features": "sqrt", "min_samples_leaf": 25, "min_samples_split": 100, "n_estimators": 120, "n_jobs": -1, "random_state": 42} | 0.7079 | 0.3010 | 0.1653 |
 | Random Forest | 4 | {"max_depth": 10, "max_features": "sqrt", "min_samples_leaf": 25, "min_samples_split": 100, "n_estimators": 80, "n_jobs": -1, "random_state": 42} | 0.7076 | 0.3005 | 0.1653 |
-| HistGradientBoosting | 1 | {"early_stopping": false, "l2_regularization": 0.0, "learning_rate": 0.05, "max_depth": 6, "max_iter": 150, "max_leaf_nodes": 31, "min_samples_leaf": 50} | 0.7151 | 0.3123 | 0.1628 |
-| HistGradientBoosting | 2 | {"early_stopping": false, "l2_regularization": 0.0, "learning_rate": 0.05, "max_depth": 4, "max_iter": 150, "max_leaf_nodes": 31, "min_samples_leaf": 50} | 0.7137 | 0.3101 | 0.1633 |
-| HistGradientBoosting | 3 | {"early_stopping": false, "l2_regularization": 0.0, "learning_rate": 0.03, "max_depth": 6, "max_iter": 150, "max_leaf_nodes": 31, "min_samples_leaf": 50} | 0.7130 | 0.3098 | 0.1634 |
-| HistGradientBoosting | 4 | {"early_stopping": false, "l2_regularization": 0.0, "learning_rate": 0.03, "max_depth": 4, "max_iter": 150, "max_leaf_nodes": 31, "min_samples_leaf": 50} | 0.7112 | 0.3068 | 0.1641 |
+| HistGradientBoosting | 1 | {"early_stopping": false, "l2_regularization": 0.0, "learning_rate": 0.05, "max_depth": 6, "max_iter": 150, "max_leaf_nodes": 31, "min_samples_leaf": 50} | 0.7152 | 0.3131 | 0.1627 |
+| HistGradientBoosting | 2 | {"early_stopping": false, "l2_regularization": 0.0, "learning_rate": 0.05, "max_depth": 4, "max_iter": 150, "max_leaf_nodes": 31, "min_samples_leaf": 50} | 0.7138 | 0.3099 | 0.1633 |
+| HistGradientBoosting | 3 | {"early_stopping": false, "l2_regularization": 0.0, "learning_rate": 0.03, "max_depth": 6, "max_iter": 150, "max_leaf_nodes": 31, "min_samples_leaf": 50} | 0.7130 | 0.3102 | 0.1634 |
+| HistGradientBoosting | 4 | {"early_stopping": false, "l2_regularization": 0.0, "learning_rate": 0.03, "max_depth": 4, "max_iter": 150, "max_leaf_nodes": 31, "min_samples_leaf": 50} | 0.7112 | 0.3069 | 0.1641 |
 | XGBoost | 1 | {"colsample_bytree": 0.8, "learning_rate": 0.05, "max_depth": 6, "min_child_weight": 5, "n_estimators": 120, "n_jobs": -1, "random_state": 42, "reg_lambda": 1.0, "subsample": 0.8} | 0.7151 | 0.3123 | 0.1628 |
 | XGBoost | 2 | {"colsample_bytree": 0.8, "learning_rate": 0.05, "max_depth": 6, "min_child_weight": 5, "n_estimators": 80, "n_jobs": -1, "random_state": 42, "reg_lambda": 1.0, "subsample": 0.8} | 0.7132 | 0.3097 | 0.1634 |
 | XGBoost | 3 | {"colsample_bytree": 0.8, "learning_rate": 0.05, "max_depth": 4, "min_child_weight": 5, "n_estimators": 120, "n_jobs": -1, "random_state": 42, "reg_lambda": 1.0, "subsample": 0.8} | 0.7129 | 0.3093 | 0.1636 |
@@ -217,27 +233,35 @@ Grid search space:
 | 2 | Initial list status dummies | use_initial_list_status_dummies | XGBoost | grid_search | {"colsample_bytree": 0.8, "learning_rate": 0.05, "max_depth": 6, "min_child_weight": 5, "n_estimators": 120, "n_jobs": -1, "random_state": 42, "reg_lambda": 1.0, "subsample": 0.8} | 1 | initial_list_status_w | 0.7150 | 0.3132 | 0.1626 | -0.0002 | 0.0009 | -0.0002 |
 | 3 | Grade dummies | use_grade_dummies | XGBoost | grid_search | {"colsample_bytree": 0.8, "learning_rate": 0.05, "max_depth": 6, "min_child_weight": 5, "n_estimators": 120, "n_jobs": -1, "random_state": 42, "reg_lambda": 1.0, "subsample": 0.8} | 6 | grade_B, grade_C, grade_D, grade_E, grade_F, grade_G | 0.7148 | 0.3112 | 0.1629 | -0.0003 | -0.0011 | 0.0001 |
 
+## Feature Discovery Visuals
+
+The feature-search chart annotates exact validation deltas and shades the near-zero zone to separate material changes from noise-level movement.
+
+### Feature Search Impact
+
+![Feature Search Impact](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/temporal_model/feature_search_deltas.png)
+
 ## Final Chosen Hyperparameters
 
-- Selected model: `XGBoost`
-- Validation AUC: `0.7151`
-- Validation KS: `0.3123`
-- Validation Brier: `0.1628`
+- Selected model: `HistGradientBoosting`
+- Validation AUC: `0.7152`
+- Validation KS: `0.3131`
+- Validation Brier: `0.1627`
 
 ```json
-{"colsample_bytree": 0.8, "learning_rate": 0.05, "max_depth": 6, "min_child_weight": 5, "n_estimators": 120, "n_jobs": -1, "random_state": 42, "reg_lambda": 1.0, "subsample": 0.8}
+{"early_stopping": false, "l2_regularization": 0.0, "learning_rate": 0.05, "max_depth": 6, "max_iter": 150, "max_leaf_nodes": 31, "min_samples_leaf": 50}
 ```
 
 ## Holdout Test Results
 
-- Champion test AUC: `0.7106`
-- Champion test KS: `0.3063`
-- Champion test Brier: `0.1521`
+- Champion test AUC: `0.7109`
+- Champion test KS: `0.3067`
+- Champion test Brier: `0.1520`
 
 | validation_rank | model_name | params | test_auc | test_ks | test_brier | calibration_summary |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | XGBoost | {"colsample_bytree": 0.8, "learning_rate": 0.05, "max_depth": 6, "min_child_weight": 5, "n_estimators": 120, "n_jobs": -1, "random_state": 42, "reg_lambda": 1.0, "subsample": 0.8} | 0.7106 | 0.3063 | 0.1521 | Well aligned across calibration bins. |
-| 2 | HistGradientBoosting | {"early_stopping": false, "l2_regularization": 0.0, "learning_rate": 0.05, "max_depth": 6, "max_iter": 150, "max_leaf_nodes": 31, "min_samples_leaf": 50} | 0.7112 | 0.3065 | 0.1520 | Underestimates risk in the highest-PD bins. |
+| 1 | HistGradientBoosting | {"early_stopping": false, "l2_regularization": 0.0, "learning_rate": 0.05, "max_depth": 6, "max_iter": 150, "max_leaf_nodes": 31, "min_samples_leaf": 50} | 0.7109 | 0.3067 | 0.1520 | Well aligned across calibration bins. |
+| 2 | XGBoost | {"colsample_bytree": 0.8, "learning_rate": 0.05, "max_depth": 6, "min_child_weight": 5, "n_estimators": 120, "n_jobs": -1, "random_state": 42, "reg_lambda": 1.0, "subsample": 0.8} | 0.7106 | 0.3063 | 0.1521 | Well aligned across calibration bins. |
 | 3 | Logistic Regression | {"C": 2.0, "class_weight": "balanced", "max_iter": 1000} | 0.7035 | 0.2975 | 0.2236 | Overestimates risk in the highest-PD bins. |
 | 4 | Random Forest | {"max_depth": 14, "max_features": "sqrt", "min_samples_leaf": 25, "min_samples_split": 100, "n_estimators": 120, "n_jobs": -1, "random_state": 42} | 0.7073 | 0.3010 | 0.1527 | Underestimates risk in the highest-PD bins. |
 
@@ -245,9 +269,31 @@ Grid search space:
 
 | period | fitted_on | rows | default_rate | min_issue_date | max_issue_date | auc | ks | brier |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| train | train only | 826604 | 0.1843 | 2007-06-01 | 2015-12-01 | 0.7258 | 0.3273 | 0.1346 |
-| validation | train only | 293095 | 0.2328 | 2016-01-01 | 2016-12-01 | 0.7151 | 0.3123 | 0.1628 |
-| test | train + validation | 225611 | 0.2128 | 2017-01-01 | 2018-12-01 | 0.7106 | 0.3063 | 0.1521 |
+| train | train only | 826604 | 0.1843 | 2007-06-01 | 2015-12-01 | 0.7242 | 0.3249 | 0.1348 |
+| validation | train only | 293095 | 0.2328 | 2016-01-01 | 2016-12-01 | 0.7152 | 0.3131 | 0.1627 |
+| test | train + validation | 225611 | 0.2128 | 2017-01-01 | 2018-12-01 | 0.7109 | 0.3067 | 0.1520 |
+
+## Holdout Visual Diagnostics
+
+### Test ROC Comparison
+
+![Test ROC Comparison](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/temporal_model/test_roc_comparison.png)
+
+### Test Reliability Diagram
+
+![Test Reliability Diagram](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/temporal_model/test_calibration_comparison.png)
+
+### Champion Validation KS Curve
+
+![Champion Validation KS Curve](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/temporal_model/champion_validation_ks.png)
+
+### Champion Test KS Curve
+
+![Champion Test KS Curve](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/temporal_model/champion_test_ks.png)
+
+### Champion Score Distribution
+
+![Champion Score Distribution](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/temporal_model/champion_score_distribution.png)
 
 ## Feature Importance And Interpretability
 
@@ -290,6 +336,16 @@ Grid search space:
 | verification_status_Source Verified | 0.0158 |
 | fico_bucket_very_good | 0.0141 |
 | inq_last_6mths | 0.0129 |
+
+## Visual Interpretability
+
+### Logistic Coefficients
+
+![Logistic Coefficients](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/temporal_model/logistic_coefficients.png)
+
+### XGBoost Feature Importance
+
+![XGBoost Feature Importance](/Users/minleihao/Desktop/Risk Project/IDS583_Final_Project/reports/figures/temporal_model/xgboost_feature_importance.png)
 
 ## Candidate Feature Flags
 

@@ -6,15 +6,33 @@ from pandas.api.types import is_numeric_dtype
 from loss_preprocess import LOSS_CLEANING_METHODS, MANAGERIAL_SEGMENT_COLUMNS
 
 
-def write_loss_reserve_report(workflow_result, report_config, output_path):
+def write_loss_reserve_report(
+    workflow_result,
+    report_config,
+    output_path,
+    visual_paths=None,
+    diagnostic_tables=None,
+):
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    markdown = build_loss_reserve_report(workflow_result, report_config)
+    markdown = build_loss_reserve_report(
+        workflow_result,
+        report_config,
+        visual_paths=visual_paths,
+        diagnostic_tables=diagnostic_tables,
+    )
     output_path.write_text(markdown, encoding="utf-8")
     return output_path
 
 
-def build_loss_reserve_report(workflow_result, report_config):
+def build_loss_reserve_report(
+    workflow_result,
+    report_config,
+    visual_paths=None,
+    diagnostic_tables=None,
+):
+    visual_paths = visual_paths or {}
+    diagnostic_tables = diagnostic_tables or {}
     lines = [
         "# Credit Loss, CECL Proxy, And Risk Segmentation Report",
         "",
@@ -95,6 +113,42 @@ def build_loss_reserve_report(workflow_result, report_config):
             ]
         )
 
+    for title, table_key in [
+        ("LGD Diagnostic Summary", "lgd_diagnostics"),
+        ("EAD Summary", "ead_summary"),
+        ("Recovery Summary", "recovery_summary"),
+    ]:
+        table = diagnostic_tables.get(table_key, pd.DataFrame())
+        if table is None or table.empty:
+            continue
+        lines.extend(
+            [
+                f"### {title}",
+                "",
+                _dataframe_to_markdown(
+                    _format_numeric_columns(
+                        table.copy(),
+                        include_tokens=("mae", "rmse", "bias", "corr", "mean", "median", "p90", "max"),
+                    )
+                ),
+                "",
+            ]
+        )
+
+    lgd_visual_lines = _image_section_lines(
+        [
+            ("LGD Actual vs Expected", visual_paths.get("lgd_actual_vs_expected")),
+            ("LGD Error Distribution", visual_paths.get("lgd_error_histogram")),
+            ("LGD Distribution By Grade", visual_paths.get("lgd_by_grade")),
+            ("EAD Distribution", visual_paths.get("ead_distribution")),
+            ("Charged-Off EAD By Grade", visual_paths.get("ead_by_grade")),
+            ("Recovery Rate Distribution", visual_paths.get("recovery_rate_distribution")),
+            ("LGD Lookup Source Usage", visual_paths.get("lgd_lookup_source")),
+        ]
+    )
+    if lgd_visual_lines:
+        lines.extend(["## LGD And EAD Diagnostics", ""] + lgd_visual_lines)
+
     lines.extend(["## Hazard-Based Lifetime PD", ""])
     hazard_panel_summary = workflow_result.get("hazard_panel_summary", pd.DataFrame())
     if not hazard_panel_summary.empty:
@@ -143,6 +197,25 @@ def build_loss_reserve_report(workflow_result, report_config):
         )
         lines.extend([f"### {title}", "", _dataframe_to_markdown(display_table), ""])
 
+    hazard_visual_lines = _image_section_lines(
+        [
+            ("Hazard Calibration By Vintage", visual_paths.get("hazard_vintage_calibration")),
+            ("Monthly Hazard Profile", visual_paths.get("monthly_hazard_profile")),
+            ("12-Month PD vs Lifetime PD", visual_paths.get("active_pd_compare")),
+            ("Remaining Term vs Lifetime PD", visual_paths.get("remaining_term_vs_lifetime_pd")),
+        ]
+    )
+    if hazard_visual_lines:
+        lines.extend(
+            [
+                "## Lifetime PD And CECL Visual Diagnostics",
+                "",
+                "Vintage calibration is shown as a point snapshot rather than an interpolated time-series line because only one validation vintage and two test vintages are available.",
+                "",
+            ]
+            + hazard_visual_lines
+        )
+
     lines.extend(["## Expected Loss Outputs", ""])
     portfolio_summary = workflow_result.get("portfolio_summary", pd.DataFrame())
     if not portfolio_summary.empty:
@@ -161,6 +234,22 @@ def build_loss_reserve_report(workflow_result, report_config):
                 display_table[column] = display_table[column].map(_format_float)
         lines.extend([_dataframe_to_markdown(display_table), ""])
 
+    concentration_table = diagnostic_tables.get("el_concentration", pd.DataFrame())
+    if concentration_table is not None and not concentration_table.empty:
+        lines.extend(
+            [
+                "### Expected Loss Concentration Summary",
+                "",
+                _dataframe_to_markdown(
+                    _format_numeric_columns(
+                        concentration_table.copy(),
+                        include_tokens=("share",),
+                    )
+                ),
+                "",
+            ]
+        )
+
     stage2_summary = workflow_result.get("stage2_benchmark_summary", {})
     if stage2_summary:
         lines.extend(
@@ -174,6 +263,29 @@ def build_loss_reserve_report(workflow_result, report_config):
                 f"- Used as the 12-month EL PD input: `{stage2_summary.get('used_for_12m_el', False)}`",
                 "",
             ]
+        )
+
+    expected_loss_visual_lines = _image_section_lines(
+        [
+            (
+                "Portfolio Expected Loss By Scope (Absolute And Normalized)",
+                visual_paths.get("portfolio_el_comparison"),
+            ),
+            ("Matched-Horizon Loss Comparison", visual_paths.get("predicted_vs_actual_loss")),
+            ("Normalized Expected Loss Components", visual_paths.get("el_component_summary")),
+            ("Top Active Loans By Lifetime EL", visual_paths.get("top_expected_loss_loans")),
+            ("Expected Loss Concentration Curve", visual_paths.get("el_concentration_curve")),
+        ]
+    )
+    if expected_loss_visual_lines:
+        lines.extend(
+            [
+                "## Expected Loss Visual Summary",
+                "",
+                "Absolute EL charts are separated by scope and paired with normalized views. The direct predicted-versus-actual comparison is limited to the resolved 12-month holdout so the horizon remains matched.",
+                "",
+            ]
+            + expected_loss_visual_lines
         )
 
     resolved_sample = workflow_result.get("resolved_holdout_sample", pd.DataFrame())
@@ -264,6 +376,21 @@ def build_loss_reserve_report(workflow_result, report_config):
                 ]
             )
 
+        segmentation_visual_lines = _image_section_lines(
+            [
+                ("Lifetime Expected Loss By Grade", visual_paths.get("segment_el_by_grade")),
+                (
+                    "Lifetime Expected Loss Share By Purpose Group",
+                    visual_paths.get("segment_share_by_purpose"),
+                ),
+                ("Expected Loss Trend By Quarter", visual_paths.get("vintage_el_trend")),
+                ("Grade x Term Heatmap", visual_paths.get("grade_term_heatmap")),
+                ("Grade x FICO Heatmap", visual_paths.get("grade_fico_heatmap")),
+            ]
+        )
+        if segmentation_visual_lines:
+            lines.extend(["## Risk Segmentation Dashboards", ""] + segmentation_visual_lines)
+
     lines.extend(
         [
             "## Next-Phase Bridge",
@@ -310,3 +437,16 @@ def _format_numeric_columns(df, include_tokens=(), exact_columns=()):
             df[column] = df[column].map(_format_float)
 
     return df
+
+
+def _image_section_lines(image_specs):
+    lines = []
+    for title, path in image_specs:
+        if not path:
+            continue
+        lines.extend([f"### {title}", "", _image_markdown(title, path), ""])
+    return lines
+
+
+def _image_markdown(title, path):
+    return f"![{title}]({Path(path).resolve()})"
