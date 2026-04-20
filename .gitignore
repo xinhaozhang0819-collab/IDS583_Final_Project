@@ -1,4 +1,6 @@
 data/raw/*
-data/processed/loan_clean.csv
+data/processed/*.csv
 __pycache__/
 *.pyc
+.DS_Store
+.ipynb_checkpoints/

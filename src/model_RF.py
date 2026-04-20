@@ -1,19 +1,24 @@
 from sklearn.ensemble import RandomForestClassifier
 
 
-def train_rf(X_train, y_train):
-    model = RandomForestClassifier(
-        n_estimators=300,
-        max_depth=None,
-        min_samples_split=50,
-        min_samples_leaf=20,
-        max_features="sqrt",
-        n_jobs=-1,
-        random_state=42,
-    )
-    model.fit(X_train, y_train)
-    return model
+DEFAULT_RF_PARAMS = {
+    "n_estimators": 120,
+    "max_depth": 12,
+    "min_samples_split": 100,
+    "min_samples_leaf": 25,
+    "max_features": "sqrt",
+    "n_jobs": -1,
+    "random_state": 42,
+}
 
 
-def predict_pd_rf(model, X):
-    return model.predict_proba(X)[:, 1]
+def get_default_rf_params():
+    return DEFAULT_RF_PARAMS.copy()
+
+
+def build_random_forest_model(params=None):
+    model_params = get_default_rf_params()
+    if params:
+        model_params.update(params)
+
+    return RandomForestClassifier(**model_params)
