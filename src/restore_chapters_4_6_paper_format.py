@@ -20,11 +20,16 @@ REPO_ROOT = PROJECT_ROOT.parent
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 FIGURE_DIR = PROJECT_ROOT / "reports" / "figures" / "loss_reserve"
 
-REFERENCE_DOCX = REPO_ROOT / "credit risk paper.bak_20260424_132814.docx"
 TARGET_DOCX = [
     PROJECT_ROOT / "output" / "doc" / "credit_risk_selected_chapters_academic.docx",
     REPO_ROOT / "credit risk paper.docx",
 ]
+REFERENCE_CANDIDATES = [
+    REPO_ROOT / "credit risk paper.bak_20260424_132814.docx",
+    REPO_ROOT / "credit risk paper.docx",
+    PROJECT_ROOT / "output" / "doc" / "credit_risk_selected_chapters_academic.docx",
+]
+REFERENCE_DOCX = next((path for path in REFERENCE_CANDIDATES if path.exists()), REFERENCE_CANDIDATES[-1])
 
 
 def _fmt_money(value, decimals=1):
@@ -238,8 +243,8 @@ def _update_tables(doc, inputs, metrics):
         1: [
             "12-month PD",
             "Probability that a loan defaults within the next twelve months",
-            "Calibrated calendar-time hazard model",
-            "Near-term expected-loss measurement on full observable 12-month cohorts",
+            "Direct active-snapshot XGBoost model",
+            "Near-term expected-loss measurement for active-at-snapshot cohorts",
         ],
         2: [
             "Lifetime PD",
@@ -409,12 +414,12 @@ def _update_paragraphs(doc, inputs, metrics):
     _set_paragraph_text(
         doc,
         41,
-        "Expected loss is the bridge between borrower-level risk estimation and portfolio-level financial measurement. The updated framework now uses the original static HistGradientBoosting loan-level model for lifetime PD and a separate calendar-time hazard model for twelve-month PD.",
+        "Expected loss is the bridge between borrower-level risk estimation and portfolio-level financial measurement. The updated framework now uses the original static HistGradientBoosting loan-level model for lifetime PD and a direct active-snapshot XGBoost model for twelve-month PD.",
     )
     _set_paragraph_text(
         doc,
         44,
-        "The auxiliary reserve hazard comparison remains useful for governance because it provides a time-consistent benchmark. It is no longer the source of lifetime PD: lifetime expected loss uses the rerun original static model, while twelve-month expected loss uses the calibrated calendar-time hazard model.",
+        "The auxiliary reserve hazard comparison remains useful for governance because it documents the intermediate monthly survival approach. It is no longer the main twelve-month PD input: lifetime expected loss uses the rerun original static model, while twelve-month expected loss uses the calibrated direct active-snapshot model.",
     )
     _set_paragraph_text(
         doc,
@@ -424,27 +429,27 @@ def _update_paragraphs(doc, inputs, metrics):
     _set_paragraph_text(
         doc,
         48,
-        "The twelve-month PD model produces short-horizon risk through calendar-time survival aggregation. Each row represents an account-month snapshot identified by sample_id and snapshot_month, and the target target_1m equals one when the account charges off or defaults in the following month. Splits are based on snapshot_month rather than issue_date, so the same account can legitimately contribute early observations to training and later observations to validation or test, matching how a bank would operate a monthly production risk file.",
+        "The main twelve-month PD model directly estimates whether an active-at-snapshot loan will charge off or default during the next twelve months. Each row represents an account-month snapshot identified by sample_id and snapshot_month, restricted to loans still at risk at that snapshot. Splits are based on snapshot_month rather than issue_date, so the design approximates a bank's recurring monthly production risk file.",
     )
     _set_paragraph_text(
         doc,
         49,
-        "Predicted monthly hazards are converted into cumulative twelve-month PDs by multiplying monthly survival probabilities. For numerical stability, the implementation sums log survival terms before converting back to cumulative PD. The lifetime PD is not produced from the calendar hazard curve in this version; it is supplied by the rerun static HGB loan-level model.",
+        "The earlier one-month hazard model is retained as a comparison group and research diagnostic. It converts monthly hazards into cumulative twelve-month PDs by summing log survival terms, but the final twelve-month EL input now comes from the direct active-snapshot XGBoost model because that target is aligned with the intended current-portfolio twelve-month decision horizon.",
     )
     _set_paragraph_text(
         doc,
         50,
-        "PD_12m = 1 - exp[sum log(1 - monthly hazard)], over the next twelve months;   PD_life = static HGB calibrated loan-level probability.",
+        "PD_12m = calibrated direct active-snapshot probability of default within the next twelve months;   PD_life = static HGB calibrated loan-level probability.",
     )
     _set_paragraph_text(
         doc,
         51,
-        "Equation (5.1). Twelve-month hazard aggregation and static lifetime PD mapping.",
+        "Equation (5.1). Direct twelve-month PD and static lifetime PD mapping.",
     )
     _set_paragraph_text(
         doc,
         54,
-        "The distinction between horizons is equally important. Twelve-month expected loss uses calibrated calendar-time hazard predicted_pd_12m, whereas lifetime expected loss uses the rerun original static HistGradientBoosting predicted_pd. This two-model design avoids forcing a single hazard specification to serve both short-horizon monitoring and lifetime reserve analytics.",
+        "The distinction between horizons is equally important. Twelve-month expected loss uses calibrated direct active-snapshot predicted_pd_12m, whereas lifetime expected loss uses the rerun original static HistGradientBoosting predicted_pd. This two-model design avoids forcing one specification to serve both short-horizon monitoring and lifetime reserve analytics.",
     )
     _set_paragraph_text(
         doc,
@@ -454,7 +459,7 @@ def _update_paragraphs(doc, inputs, metrics):
     _set_paragraph_text(
         doc,
         64,
-        f"For the active snapshot, the reported twelve-month EL equals {_fmt_money(active_12['total_el'])}, while the lifetime reserve-style EL equals {_fmt_money(active_life['total_el'])}. The lifetime result is based on the static HGB model and is higher because its average lifetime PD ({_fmt_pct(active_life['avg_pd'])}) exceeds the average twelve-month hazard PD ({_fmt_pct(active_12['avg_pd'])}).",
+        f"For the active snapshot, the reported twelve-month EL equals {_fmt_money(active_12['total_el'])}, while the lifetime reserve-style EL equals {_fmt_money(active_life['total_el'])}. The lifetime result is based on the static HGB model and is higher because its average lifetime PD ({_fmt_pct(active_life['avg_pd'])}) exceeds the average direct twelve-month PD ({_fmt_pct(active_12['avg_pd'])}).",
     )
     _set_paragraph_text(
         doc,
@@ -497,10 +502,10 @@ def _replace_figures(doc):
     replacements = {
         1: FIGURE_DIR / "ead_by_grade.png",
         4: FIGURE_DIR / "lgd_actual_vs_expected.png",
-        8: FIGURE_DIR / "portfolio_el_comparison.png",
-        9: FIGURE_DIR / "predicted_vs_actual_loss.png",
-        11: FIGURE_DIR / "segment_el_by_grade.png",
-        12: FIGURE_DIR / "grade_term_heatmap.png",
+        7: FIGURE_DIR / "portfolio_el_comparison.png",
+        8: FIGURE_DIR / "predicted_vs_actual_loss.png",
+        10: FIGURE_DIR / "segment_el_by_grade.png",
+        11: FIGURE_DIR / "grade_term_heatmap.png",
     }
     for shape_index, path in replacements.items():
         _replace_inline_image(doc, shape_index, path)

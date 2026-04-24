@@ -190,13 +190,21 @@ def run_loss_reserve_workflow(config):
             [resolved_stage2_predictions, active_stage2_predictions, observable_12m_predictions],
             ignore_index=True,
         )
+        direct_12m_model = stage2_scoring_config.get("direct_12m_model", {})
+        hazard_comparison_model = stage2_scoring_config.get(
+            "hazard_12m_comparison_model",
+            stage2_scoring_config.get("hazard_12m_model", {}),
+        )
+        prediction_source = "precomputed_dual_pd_static_lifetime_and_direct_active_snapshot_12m"
+        if not direct_12m_model:
+            prediction_source = "precomputed_dual_pd_static_lifetime_and_12m_hazard"
         stage2_benchmark_summary = {
             "model_name": stage2_scoring_config.get("model_name", "Dual PD"),
             "rows": int(combined_stage2["sample_id"].nunique()),
             "mean_predicted_pd": float(combined_stage2["stage2_champion_pd"].mean()),
             "mean_predicted_pd_12m": float(combined_stage2["stage2_champion_pd_12m"].mean()),
             "mean_predicted_pd_lifetime": float(combined_stage2["stage2_champion_pd_lifetime"].mean()),
-            "prediction_source": "precomputed_dual_pd_static_lifetime_and_12m_hazard",
+            "prediction_source": prediction_source,
             "used_for_12m_el": True,
             "used_for_lifetime_el": True,
             "full_stage2_scoring": True,
@@ -205,7 +213,9 @@ def run_loss_reserve_workflow(config):
             "observable_12m_stage2_scored_rows": int(observable_12m_predictions["sample_id"].nunique()),
             "unscored_rows_fallback_to_reserve_hazard": False,
             "lifetime_model": stage2_scoring_config.get("lifetime_model", {}),
-            "hazard_12m_model": stage2_scoring_config.get("hazard_12m_model", {}),
+            "direct_12m_model": direct_12m_model,
+            "hazard_12m_comparison_model": hazard_comparison_model,
+            "hazard_12m_model": hazard_comparison_model,
         }
     elif stage2_scoring_config:
         if stage2_scoring_config.get("calendar_panel_is_prebuilt"):
@@ -732,9 +742,19 @@ def _stage2_scope_predictions(stage2_predictions, scope):
             "predicted_pd_12m_model_calibrated",
             "pd_12m_conservative_floor",
             "predicted_hazard_1m",
+            "predicted_pd_12m_direct_raw",
+            "predicted_pd_12m_direct_calibrated",
+            "predicted_pd_12m_direct",
+            "pd_12m_direct_conservative_floor",
+            "predicted_pd_12m_hazard_raw",
+            "predicted_pd_12m_hazard",
+            "predicted_hazard_1m_hazard",
             "lifetime_model_name",
             "hazard_12m_model_name",
+            "direct_12m_model_name",
             "lifetime_model_source",
+            "pd_12m_model_source",
+            "pd_12m_champion_source",
             "prediction_scope",
         ]
         if column in scoped.columns

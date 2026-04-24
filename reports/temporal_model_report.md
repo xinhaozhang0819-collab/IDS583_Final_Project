@@ -7,7 +7,19 @@ The project uses issue_date only as temporal metadata and never as a predictive 
 Grid search and model selection are restricted to the training and validation periods.
 The final holdout test period is opened only after the model family, features, and hyperparameters are locked.
 
-Dual-PD update: the final expected-loss workflow uses the rerun original static HistGradientBoosting loan-level model for lifetime PD and uses the calendar-time hazard XGBoost model for twelve-month PD. The calendar-time report below documents the short-horizon hazard component and its diagnostics, not the source of lifetime PD.
+Dual-PD update: the final expected-loss workflow uses the rerun original static HistGradientBoosting loan-level model for lifetime PD and uses a calibrated direct active-snapshot XGBoost model for twelve-month PD. The calendar-time hazard report below is retained as a comparison group and research diagnostic, not as the main twelve-month EL input.
+
+## Direct Active-Snapshot 12M Champion
+
+- Direct 12M model key: `direct_12m_xgboost`
+- Candidate search: 6 candidates (1 Logistic baseline, 1 Random Forest benchmark, 4 XGBoost candidates)
+- Selected direct 12M model: `XGBoost`
+- Selected parameters: `n_estimators=120`, `max_depth=5`, `learning_rate=0.06`
+- Direct 12M validation AUC: `0.6708`
+- Direct 12M test AUC: `0.6652`
+- Calibration reference: full validation observable 12M loan-level cohort
+- Validation required PD from realized 12M loss: `0.0620`; conservative target after 110% buffer: `0.0682`
+- Full observable 12M test EL: expected `$499.5M` versus realized `$350.4M`, or `142.5%` coverage.
 
 ## Dataset And Temporal Split
 
@@ -40,7 +52,7 @@ Dual-PD update: the final expected-loss workflow uses the rerun original static 
 - Enabled main model families are Logistic Regression, Random Forest, XGBoost, and MLP Neural Network; HistGradientBoosting is excluded from the main PD search.
 - Champion feature profile: `full_calendar_hazard`.
 - Champion modeled column count: `176`.
-- In the dual-PD final workflow, `predicted_pd` is the rerun static HGB lifetime PD; `predicted_pd_12m` is the fixed-horizon calendar-time hazard PD.
+- In the dual-PD final workflow, `predicted_pd` is the rerun static HGB lifetime PD; `predicted_pd_12m` is the calibrated direct active-snapshot 12-month PD. The calendar-time hazard PD is retained in diagnostic fields such as `predicted_pd_12m_hazard`.
 
 ### Encoded Feature Columns
 

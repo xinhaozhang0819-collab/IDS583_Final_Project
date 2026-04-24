@@ -39,7 +39,7 @@ def build_loss_reserve_report(
         "## Course Formula Alignment",
         "",
         "This phase extends the hazard PD workflow into a course-aligned expected-loss framework.",
-        "The core lens is `Expected Loss = PD x LGD x EAD`, with installment-loan simplifications for EAD, credibility-weighted LGD lookups, a rerun original static HGB model for lifetime PD, a calendar-time hazard model for twelve-month PD, and management-facing segmentation.",
+        "The core lens is `Expected Loss = PD x LGD x EAD`, with installment-loan simplifications for EAD, credibility-weighted LGD lookups, a rerun original static HGB model for lifetime PD, a direct active-snapshot XGBoost model for twelve-month PD, and management-facing segmentation.",
         "Pricing and economic capital are not implemented here; the report ends with a short bridge showing how these outputs feed those later modules.",
         "",
         "## Data Assets And Temporal Policy",
@@ -155,7 +155,7 @@ def build_loss_reserve_report(
     if stage2_summary:
         lines.extend(
             [
-                "The main expected-loss input is the dual-PD stage2 file: static HistGradientBoosting supplies lifetime PD and calibrated calendar-time XGBoost hazard supplies twelve-month PD. The auxiliary reserve hazard benchmark below is retained only for diagnostics and comparison.",
+                "The main expected-loss input is the dual-PD stage2 file: static HistGradientBoosting supplies lifetime PD and calibrated direct active-snapshot XGBoost supplies twelve-month PD. The auxiliary reserve hazard benchmark below is retained only for diagnostics and comparison.",
                 "",
                 f"- Main PD champion used for EL: `{stage2_summary.get('model_name', 'NA')}`",
                 f"- Prediction source: `{stage2_summary.get('prediction_source', 'NA')}`",
@@ -306,8 +306,9 @@ def build_loss_reserve_report(
         )
 
     if stage2_summary:
-        calibration = stage2_summary.get("hazard_calibration", {}) or {}
-        overlay = (
+        direct_model = stage2_summary.get("direct_12m_model", {}) or {}
+        calibration = direct_model.get("calibration", {}) or stage2_summary.get("hazard_calibration", {}) or {}
+        overlay = calibration if direct_model else (
             stage2_summary.get("hazard_12m_model", {})
             .get("pd_12m_conservative_overlay", {})
             or {}
@@ -327,8 +328,11 @@ def build_loss_reserve_report(
                 f"- Resolved rows scored by stage2: `{stage2_summary.get('resolved_stage2_scored_rows', 'NA')}`",
                 f"- Active rows scored by stage2: `{stage2_summary.get('active_stage2_scored_rows', 'NA')}`",
                 f"- Unscored rows fall back to reserve hazard PD: `{stage2_summary.get('unscored_rows_fallback_to_reserve_hazard', False)}`",
-                f"- Twelve-month hazard calibration method: `{calibration.get('method', 'none')}`",
-                f"- Twelve-month hazard calibration intercept shift: `{_format_float(calibration.get('intercept_shift'))}`",
+                f"- Twelve-month PD model source: `{direct_model.get('source', 'calendar_hazard_comparison')}`",
+                f"- Twelve-month calibration method: `{calibration.get('method', 'none')}`",
+                f"- Twelve-month calibration intercept shift: `{_format_float(calibration.get('intercept_shift'))}`",
+                f"- Twelve-month calibration reference required PD: `{_format_float(calibration.get('reference_required_pd'))}`",
+                f"- Twelve-month calibration target PD with buffer: `{_format_float(calibration.get('reference_target_pd_with_buffer'))}`",
             ]
         )
         if overlay:
