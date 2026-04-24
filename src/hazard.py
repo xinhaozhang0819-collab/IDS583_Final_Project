@@ -2,7 +2,9 @@ import copy
 
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import ParameterGrid
 
 from evaluation import evaluate_model
 from loss_preprocess import (
@@ -39,15 +41,34 @@ MONTH_BUCKET_LABELS = [
     "m37_48",
     "m49_60",
 ]
-DEFAULT_HAZARD_PARAM_GRID = [
-    {"C": 0.5, "class_weight": None},
-    {"C": 1.0, "class_weight": None},
-    {"C": 2.0, "class_weight": "balanced"},
-]
-DEFAULT_HAZARD_BASE_PARAMS = {
+LOGISTIC_HAZARD_MODEL_KEY = "pooled_logistic"
+HGB_HAZARD_MODEL_KEY = "hist_gradient_boosting"
+HAZARD_MODEL_LABELS = {
+    LOGISTIC_HAZARD_MODEL_KEY: "Pooled Logistic Hazard",
+    HGB_HAZARD_MODEL_KEY: "HistGradientBoosting Hazard",
+}
+
+DEFAULT_LOGISTIC_HAZARD_PARAM_GRID = {
+    "C": [0.25, 0.5, 1.0, 2.0, 5.0],
+    "class_weight": [None, "balanced"],
+}
+DEFAULT_HAZARD_PARAM_GRID = DEFAULT_LOGISTIC_HAZARD_PARAM_GRID
+DEFAULT_LOGISTIC_HAZARD_BASE_PARAMS = {
     "solver": "lbfgs",
     "max_iter": 500,
     "n_jobs": None,
+}
+DEFAULT_HGB_HAZARD_PARAM_GRID = {
+    "learning_rate": [0.03, 0.05, 0.08],
+    "max_iter": [120, 180],
+    "max_depth": [4, 6],
+    "min_samples_leaf": [80, 120],
+    "l2_regularization": [0.0, 0.01],
+}
+DEFAULT_HGB_HAZARD_BASE_PARAMS = {
+    "max_leaf_nodes": 31,
+    "early_stopping": False,
+    "random_state": 42,
 }
 
 
@@ -137,7 +158,11 @@ def build_monthly_hazard_panel_counts(loan_df, chunk_size=200000):
     )
 
 
-def fit_pooled_logistic_hazard(loan_df, param_grid=None):
+def fit_time_consistent_hazard(
+    loan_df,
+    logistic_param_grid=None,
+    ml_param_grid=None,
+):
     hazard_loans = prepare_hazard_loan_frame(loan_df)
     panel_counts = build_monthly_hazard_panel_counts(hazard_loans)
     if panel_counts.empty:
@@ -155,12 +180,17 @@ def fit_pooled_logistic_hazard(loan_df, param_grid=None):
     search_rows = []
     best_search_key = None
     best_candidate = None
-    param_grid = param_grid or DEFAULT_HAZARD_PARAM_GRID
+    best_candidate_by_model = {}
+    candidate_specs = _build_hazard_candidate_specs(
+        logistic_param_grid=logistic_param_grid,
+        ml_param_grid=ml_param_grid,
+    )
 
-    for candidate_id, override in enumerate(param_grid, start=1):
+    for candidate_id, candidate in enumerate(candidate_specs, start=1):
         train_bundle = _fit_hazard_model(
             panel_counts[panel_counts[SPLIT_LABEL_COLUMN] == "train"].copy(),
-            override,
+            model_key=candidate["model_key"],
+            override_params=candidate["params"],
         )
         validation_predictions = score_hazard_probabilities(
             train_bundle,
@@ -179,7 +209,9 @@ def fit_pooled_logistic_hazard(loan_df, param_grid=None):
         search_rows.append(
             {
                 "candidate_id": candidate_id,
-                "params": override,
+                "model_key": candidate["model_key"],
+                "model_name": candidate["model_name"],
+                "params": candidate["params"],
                 "validation_lifetime_auc": validation_metrics["AUC"],
                 "validation_lifetime_ks": validation_metrics["KS"],
                 "validation_lifetime_brier": validation_metrics["Brier"],
@@ -190,15 +222,107 @@ def fit_pooled_logistic_hazard(loan_df, param_grid=None):
         if best_search_key is None or comparison_key > best_search_key:
             best_search_key = comparison_key
             best_candidate = {
-                "params": copy.deepcopy(override),
+                "model_key": candidate["model_key"],
+                "model_name": candidate["model_name"],
+                "params": copy.deepcopy(candidate["params"]),
                 "train_bundle": train_bundle,
                 "validation_predictions": validation_predictions,
                 "validation_metrics": validation_metrics,
                 "validation_metrics_12m": validation_metrics_12m,
+                "comparison_key": comparison_key,
+            }
+        model_key = candidate["model_key"]
+        if (
+            model_key not in best_candidate_by_model
+            or comparison_key > best_candidate_by_model[model_key]["comparison_key"]
+        ):
+            best_candidate_by_model[model_key] = {
+                "model_key": candidate["model_key"],
+                "model_name": candidate["model_name"],
+                "params": copy.deepcopy(candidate["params"]),
+                "train_bundle": train_bundle,
+                "validation_predictions": validation_predictions,
+                "validation_metrics": validation_metrics,
+                "validation_metrics_12m": validation_metrics_12m,
+                "comparison_key": comparison_key,
             }
 
     search_table = (
         pd.DataFrame(search_rows)
+        .sort_values(
+            by=[
+                "model_name",
+                "validation_lifetime_auc",
+                "validation_lifetime_ks",
+                "validation_lifetime_brier",
+            ],
+            ascending=[True, False, False, True],
+        )
+        .reset_index(drop=True)
+    )
+    search_table["validation_rank"] = (
+        search_table.sort_values(
+            by=[
+                "validation_lifetime_auc",
+                "validation_lifetime_ks",
+                "validation_lifetime_brier",
+            ],
+            ascending=[False, False, True],
+        )
+        .reset_index()
+        .assign(validation_rank=lambda x: range(1, len(x) + 1))
+        .set_index("index")["validation_rank"]
+    )
+    search_table = search_table.sort_values("validation_rank").reset_index(drop=True)
+
+    final_training_panel = panel_counts[
+        panel_counts[SPLIT_LABEL_COLUMN].isin(["train", "validation"])
+    ].copy()
+    final_bundles = {}
+    test_predictions_by_model = {}
+    model_comparison_rows = []
+    for candidate in best_candidate_by_model.values():
+        final_candidate_bundle = _fit_hazard_model(
+            final_training_panel,
+            model_key=candidate["model_key"],
+            override_params=candidate["params"],
+        )
+        candidate_test_predictions = score_hazard_probabilities(
+            final_candidate_bundle,
+            resolved_test,
+            start_month_column=None,
+        )
+        candidate_test_metrics = evaluate_model(
+            candidate_test_predictions["actual_default"],
+            candidate_test_predictions["lifetime_pd"],
+        )
+        candidate_test_metrics_12m = evaluate_model(
+            candidate_test_predictions["actual_default_12m"],
+            candidate_test_predictions["pd_12m"],
+        )
+        final_bundles[candidate["model_key"]] = final_candidate_bundle
+        test_predictions_by_model[candidate["model_key"]] = candidate_test_predictions
+        model_comparison_rows.append(
+            {
+                "model_key": candidate["model_key"],
+                "model_name": candidate["model_name"],
+                "selected": candidate["model_key"] == best_candidate["model_key"],
+                "params": candidate["params"],
+                "validation_lifetime_auc": candidate["validation_metrics"]["AUC"],
+                "validation_lifetime_ks": candidate["validation_metrics"]["KS"],
+                "validation_lifetime_brier": candidate["validation_metrics"]["Brier"],
+                "validation_12m_auc": candidate["validation_metrics_12m"]["AUC"],
+                "validation_12m_brier": candidate["validation_metrics_12m"]["Brier"],
+                "test_lifetime_auc": candidate_test_metrics["AUC"],
+                "test_lifetime_ks": candidate_test_metrics["KS"],
+                "test_lifetime_brier": candidate_test_metrics["Brier"],
+                "test_12m_auc": candidate_test_metrics_12m["AUC"],
+                "test_12m_brier": candidate_test_metrics_12m["Brier"],
+            }
+        )
+
+    model_comparison_table = (
+        pd.DataFrame(model_comparison_rows)
         .sort_values(
             by=[
                 "validation_lifetime_auc",
@@ -209,17 +333,10 @@ def fit_pooled_logistic_hazard(loan_df, param_grid=None):
         )
         .reset_index(drop=True)
     )
-    search_table["validation_rank"] = range(1, len(search_table) + 1)
+    model_comparison_table["validation_rank"] = range(1, len(model_comparison_table) + 1)
 
-    final_training_panel = panel_counts[
-        panel_counts[SPLIT_LABEL_COLUMN].isin(["train", "validation"])
-    ].copy()
-    final_bundle = _fit_hazard_model(final_training_panel, best_candidate["params"])
-    test_predictions = score_hazard_probabilities(
-        final_bundle,
-        resolved_test,
-        start_month_column=None,
-    )
+    final_bundle = final_bundles[best_candidate["model_key"]]
+    test_predictions = test_predictions_by_model[best_candidate["model_key"]]
     test_metrics = evaluate_model(
         test_predictions["actual_default"],
         test_predictions["lifetime_pd"],
@@ -244,9 +361,18 @@ def fit_pooled_logistic_hazard(loan_df, param_grid=None):
         "panel_counts": panel_counts,
         "panel_summary": panel_summary,
         "search_table": search_table,
+        "model_comparison_table": model_comparison_table,
+        "selected_model_key": best_candidate["model_key"],
+        "selected_model_name": best_candidate["model_name"],
         "selected_params": best_candidate["params"],
         "train_bundle": best_candidate["train_bundle"],
         "final_bundle": final_bundle,
+        "final_bundles_by_model": final_bundles,
+        "validation_predictions_by_model": {
+            key: candidate["validation_predictions"]
+            for key, candidate in best_candidate_by_model.items()
+        },
+        "test_predictions_by_model": test_predictions_by_model,
         "validation_predictions": best_candidate["validation_predictions"],
         "validation_metrics": best_candidate["validation_metrics"],
         "validation_metrics_12m": best_candidate["validation_metrics_12m"],
@@ -262,6 +388,14 @@ def fit_pooled_logistic_hazard(loan_df, param_grid=None):
             split_name="test",
         ),
     }
+
+
+def fit_pooled_logistic_hazard(loan_df, param_grid=None):
+    return fit_time_consistent_hazard(
+        loan_df,
+        logistic_param_grid=param_grid,
+        ml_param_grid=[],
+    )
 
 
 def score_hazard_probabilities(model_bundle, loan_df, start_month_column="months_on_book"):
@@ -301,6 +435,8 @@ def score_hazard_probabilities(model_bundle, loan_df, start_month_column="months
     )
     scoring["pd_12m"] = scoring["pd_12m"].fillna(0).clip(lower=0, upper=1)
     scoring["lifetime_pd"] = scoring["lifetime_pd"].fillna(0).clip(lower=0, upper=1)
+    scoring["hazard_model_key"] = model_bundle.get("model_key", "unknown")
+    scoring["hazard_model_name"] = model_bundle.get("model_name", "Unknown Hazard Model")
     return scoring
 
 
@@ -357,26 +493,28 @@ def month_bucket_label(month_values):
     )
 
 
-def _fit_hazard_model(panel_counts, override_params):
-    model_frame = _expand_panel_counts_for_logistic(panel_counts)
+def _fit_hazard_model(panel_counts, model_key, override_params):
+    model_frame = _expand_panel_counts_for_model(panel_counts)
     design_matrix = build_hazard_design_matrix(model_frame[HAZARD_MODEL_COLUMNS])
 
-    model_params = copy.deepcopy(DEFAULT_HAZARD_BASE_PARAMS)
+    model_params = _hazard_base_params(model_key)
     model_params.update(override_params)
-    model = LogisticRegression(**model_params)
+    model = _build_hazard_estimator(model_key, model_params)
     model.fit(
         design_matrix,
         model_frame["target"],
         sample_weight=model_frame["sample_weight"],
     )
     return {
+        "model_key": model_key,
+        "model_name": HAZARD_MODEL_LABELS[model_key],
         "model": model,
         "design_columns": list(design_matrix.columns),
         "model_params": model_params,
     }
 
 
-def _expand_panel_counts_for_logistic(panel_counts):
+def _expand_panel_counts_for_model(panel_counts):
     positive = panel_counts[panel_counts["event_count"] > 0].copy()
     positive["target"] = 1
     positive["sample_weight"] = positive["event_count"]
@@ -386,6 +524,91 @@ def _expand_panel_counts_for_logistic(panel_counts):
     negative["sample_weight"] = negative["exposure_count"] - negative["event_count"]
 
     return pd.concat([positive, negative], ignore_index=True)
+
+
+def _build_hazard_candidate_specs(logistic_param_grid=None, ml_param_grid=None):
+    logistic_grid = (
+        DEFAULT_LOGISTIC_HAZARD_PARAM_GRID
+        if logistic_param_grid is None
+        else logistic_param_grid
+    )
+    hgb_grid = DEFAULT_HGB_HAZARD_PARAM_GRID if ml_param_grid is None else ml_param_grid
+
+    candidates = []
+    for params in _expand_hazard_grid(logistic_grid):
+        model_params = _hazard_base_params(LOGISTIC_HAZARD_MODEL_KEY)
+        model_params.update(params)
+        candidates.append(
+            {
+                "model_key": LOGISTIC_HAZARD_MODEL_KEY,
+                "model_name": HAZARD_MODEL_LABELS[LOGISTIC_HAZARD_MODEL_KEY],
+                "params": model_params,
+            }
+        )
+    for params in _expand_hazard_grid(hgb_grid):
+        model_params = _hazard_base_params(HGB_HAZARD_MODEL_KEY)
+        model_params.update(params)
+        candidates.append(
+            {
+                "model_key": HGB_HAZARD_MODEL_KEY,
+                "model_name": HAZARD_MODEL_LABELS[HGB_HAZARD_MODEL_KEY],
+                "params": model_params,
+            }
+        )
+    if not candidates:
+        raise ValueError("At least one hazard model candidate must be configured.")
+    return candidates
+
+
+def _expand_hazard_grid(grid_spec):
+    if grid_spec is None:
+        return []
+    if isinstance(grid_spec, dict):
+        return [
+            copy.deepcopy(params)
+            for params in ParameterGrid(_as_parameter_grid_dict(grid_spec))
+        ]
+    if isinstance(grid_spec, (list, tuple)):
+        candidates = []
+        for entry in grid_spec:
+            if not isinstance(entry, dict):
+                raise TypeError("Hazard parameter grid entries must be dictionaries.")
+            if any(_is_grid_value(value) for value in entry.values()):
+                candidates.extend(
+                    copy.deepcopy(params)
+                    for params in ParameterGrid(_as_parameter_grid_dict(entry))
+                )
+            else:
+                candidates.append(copy.deepcopy(entry))
+        return candidates
+    raise TypeError("Hazard parameter grid must be a dictionary or a list of dictionaries.")
+
+
+def _as_parameter_grid_dict(params):
+    return {
+        key: list(value) if _is_grid_value(value) else [value]
+        for key, value in params.items()
+    }
+
+
+def _is_grid_value(value):
+    return isinstance(value, (list, tuple, np.ndarray, pd.Index, pd.Series))
+
+
+def _hazard_base_params(model_key):
+    if model_key == LOGISTIC_HAZARD_MODEL_KEY:
+        return copy.deepcopy(DEFAULT_LOGISTIC_HAZARD_BASE_PARAMS)
+    if model_key == HGB_HAZARD_MODEL_KEY:
+        return copy.deepcopy(DEFAULT_HGB_HAZARD_BASE_PARAMS)
+    raise ValueError(f"Unsupported hazard model key: {model_key}")
+
+
+def _build_hazard_estimator(model_key, model_params):
+    if model_key == LOGISTIC_HAZARD_MODEL_KEY:
+        return LogisticRegression(**model_params)
+    if model_key == HGB_HAZARD_MODEL_KEY:
+        return HistGradientBoostingClassifier(**model_params)
+    raise ValueError(f"Unsupported hazard model key: {model_key}")
 
 
 def _build_future_state_rows(state_table):
