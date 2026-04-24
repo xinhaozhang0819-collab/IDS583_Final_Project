@@ -14,6 +14,8 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt
 
+from evaluation import evaluate_model
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = PROJECT_ROOT.parent
@@ -146,6 +148,7 @@ def _load_inputs():
     resolved = pd.read_csv(PROCESSED_DIR / "test_with_loss_metrics.csv")
     active = pd.read_csv(PROCESSED_DIR / "cecl_active_snapshot.csv")
     portfolio = pd.read_csv(PROCESSED_DIR / "portfolio_expected_loss_summary.csv")
+    observable = pd.read_csv(PROCESSED_DIR / "observable_12m_loss_metrics.csv")
     segment = pd.read_csv(PROCESSED_DIR / "segment_expected_loss_summary.csv")
     hazard = pd.read_csv(PROCESSED_DIR / "hazard_model_comparison.csv")
     stage2 = json.loads((PROCESSED_DIR / "stage2_champion_config.json").read_text())
@@ -154,6 +157,7 @@ def _load_inputs():
         "resolved": resolved,
         "active": active,
         "portfolio": portfolio,
+        "observable": observable,
         "segment": segment,
         "hazard": hazard,
         "stage2": stage2,
@@ -165,6 +169,7 @@ def _metrics(inputs):
     resolved = inputs["resolved"]
     active = inputs["active"]
     portfolio = inputs["portfolio"]
+    observable = inputs["observable"]
     segment = inputs["segment"]
     charged_holdout = resolved[
         resolved["loan_status"].eq("Charged Off")
@@ -202,10 +207,57 @@ def _metrics(inputs):
             ("active_snapshot", "12m"): portfolio_row("active_snapshot", "12m"),
             ("active_snapshot", "lifetime"): portfolio_row("active_snapshot", "lifetime"),
         },
+        "pd_12m_comparison": _pd_12m_comparison(observable),
         "top_active_share": top_active_share,
         "top_resolved_share": top_resolved_share,
         "segment": segment,
     }
+
+
+def _pd_12m_comparison(observable):
+    frame = observable.copy()
+    y = frame["actual_default_12m"].fillna(0).astype(int)
+    actual_loss = float(
+        (y * pd.to_numeric(frame["actual_net_loss"], errors="coerce").fillna(0).clip(lower=0)).sum()
+    )
+    denominator = (
+        pd.to_numeric(frame["expected_lgd"], errors="coerce").fillna(0).clip(0, 1)
+        * pd.to_numeric(frame["ead_reference"], errors="coerce").fillna(0).clip(lower=0)
+    )
+    rows = []
+    specs = [
+        (
+            "Direct active-snapshot XGBoost",
+            "Champion",
+            "Yes",
+            "stage2_champion_pd_12m",
+        ),
+        (
+            "Calendar-time hazard diagnostic",
+            "Comparison",
+            "No",
+            "predicted_pd_12m_hazard",
+        ),
+    ]
+    for model_name, role, main_input, column in specs:
+        pred = pd.to_numeric(frame[column], errors="coerce").fillna(0).clip(0, 1)
+        metrics = evaluate_model(y, pred)
+        expected_loss = float((pred * denominator).sum())
+        rows.append(
+            {
+                "model_name": model_name,
+                "role": role,
+                "main_el_input": main_input,
+                "auc": float(metrics["AUC"]),
+                "ks": float(metrics["KS"]),
+                "brier": float(metrics["Brier"]),
+                "avg_pd": float(pred.mean()),
+                "expected_loss": expected_loss,
+                "actual_loss": actual_loss,
+                "coverage": expected_loss / actual_loss if actual_loss else math.nan,
+            }
+        )
+    return rows
 
 
 def _update_tables(doc, inputs, metrics):
@@ -258,16 +310,28 @@ def _update_tables(doc, inputs, metrics):
             _set_cell_text(table.rows[row_index].cells[col], value)
 
     table = doc.tables[3]
-    for row_index, (_, row) in enumerate(hazard.iterrows(), start=1):
+    headers = [
+        "12M PD model",
+        "Role",
+        "Main EL",
+        "AUC",
+        "KS",
+        "Brier",
+        "Avg PD",
+        "EL coverage",
+    ]
+    for col, value in enumerate(headers):
+        _set_cell_text(table.rows[0].cells[col], value)
+    for row_index, row in enumerate(metrics["pd_12m_comparison"], start=1):
         values = [
             row["model_name"],
-            "True" if bool(row["selected"]) else "False",
-            f"{row['validation_lifetime_auc']:.4f}",
-            f"{row['validation_lifetime_ks']:.4f}",
-            f"{row['validation_lifetime_brier']:.4f}",
-            f"{row['test_lifetime_auc']:.4f}",
-            f"{row['test_lifetime_ks']:.4f}",
-            f"{row['test_lifetime_brier']:.4f}",
+            row["role"],
+            row["main_el_input"],
+            f"{row['auc']:.4f}",
+            f"{row['ks']:.4f}",
+            f"{row['brier']:.4f}",
+            _fmt_pct(row["avg_pd"]),
+            _fmt_pct(row["coverage"]),
         ]
         for col, value in enumerate(values):
             _set_cell_text(table.rows[row_index].cells[col], value)
@@ -419,12 +483,12 @@ def _update_paragraphs(doc, inputs, metrics):
     _set_paragraph_text(
         doc,
         44,
-        "The auxiliary reserve hazard comparison remains useful for governance because it documents the intermediate monthly survival approach. It is no longer the main twelve-month PD input: lifetime expected loss uses the rerun original static model, while twelve-month expected loss uses the calibrated direct active-snapshot model.",
+        "The calendar-time hazard comparison remains useful for governance because it documents the intermediate monthly survival approach. It is no longer the main twelve-month PD input: lifetime expected loss uses the rerun original static model, while twelve-month expected loss uses the calibrated direct active-snapshot model.",
     )
     _set_paragraph_text(
         doc,
         46,
-        "Table 5.2. Auxiliary legacy reserve hazard benchmark, not used as the main PD input.",
+        "Table 5.2. Direct twelve-month champion versus calendar-time hazard diagnostic on the full observable twelve-month cohort.",
     )
     _set_paragraph_text(
         doc,
@@ -450,6 +514,11 @@ def _update_paragraphs(doc, inputs, metrics):
         doc,
         54,
         "The distinction between horizons is equally important. Twelve-month expected loss uses calibrated direct active-snapshot predicted_pd_12m, whereas lifetime expected loss uses the rerun original static HistGradientBoosting predicted_pd. This two-model design avoids forcing one specification to serve both short-horizon monitoring and lifetime reserve analytics.",
+    )
+    _set_paragraph_text(
+        doc,
+        58,
+        "Portfolio expected loss is obtained by summing loan-level expected loss across the relevant scope. The resulting summary table highlights two separate use cases. The full observable twelve-month cohort is the primary backtest because it includes loans that default and loans that survive through a complete twelve-month observation window. The resolved-only twelve-month view is retained only as a selection-biased diagnostic, while the active snapshot is interpreted as a reserve-style measure of dollar risk embedded in the currently outstanding loan book.",
     )
     _set_paragraph_text(
         doc,
