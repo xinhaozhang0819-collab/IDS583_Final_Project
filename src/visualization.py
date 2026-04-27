@@ -17,14 +17,16 @@ MONTH_BUCKET_ORDER = [
 ]
 
 DEFAULT_RANDOM_STATE = 42
-SCOPE_ORDER = ["resolved_test", "active_snapshot"]
+SCOPE_ORDER = ["observable_12m_test", "resolved_test", "active_snapshot"]
 SCOPE_LABELS = {
+    "observable_12m_test": "Full 12M Observable Cohort",
     "resolved_test": "Resolved Holdout",
     "active_snapshot": "Active Snapshot",
     "validation": "Validation",
     "test": "Test",
 }
 SCOPE_COLORS = {
+    "observable_12m_test": "#54a24b",
     "resolved_test": "#1f77b4",
     "active_snapshot": "#ff7f0e",
     "validation": "#2ca02c",
@@ -241,6 +243,11 @@ def export_loss_reserve_visuals(loss_result, output_dir, show=False):
         output_dir / "lgd_lookup_source.png",
         show=show,
     )
+    visual_paths["hazard_model_comparison"] = plot_hazard_model_comparison(
+        loss_result["workflow_result"].get("hazard_model_comparison", pd.DataFrame()),
+        output_dir / "hazard_model_comparison.png",
+        show=show,
+    )
     visual_paths["hazard_vintage_calibration"] = plot_hazard_vintage_calibration(
         loss_result["workflow_result"]["hazard_validation_vintage"],
         loss_result["workflow_result"]["hazard_test_vintage"],
@@ -423,10 +430,24 @@ def build_el_concentration_summary(df, analysis_scope, pd_measure, el_column):
 
 
 def plot_default_rate_trend(df, output_path, show=False):
+    target_column = "default"
+    if target_column not in df.columns:
+        if "target_1m" in df.columns:
+            target_column = "target_1m"
+        elif "actual_default" in df.columns:
+            target_column = "actual_default"
+        else:
+            raise KeyError("No default target column found for default-rate trend plot.")
+    date_column = "issue_date"
+    if "snapshot_month" in df.columns:
+        date_column = "snapshot_month"
+    working = df.copy()
+    working[date_column] = pd.to_datetime(working[date_column], errors="coerce")
+    working = working.dropna(subset=[date_column])
     trend = (
-        df.assign(issue_year_quarter=df["issue_date"].dt.to_period("Q").astype(str))
+        working.assign(issue_year_quarter=working[date_column].dt.to_period("Q").astype(str))
         .groupby("issue_year_quarter", as_index=False)
-        .agg(default_rate=("default", "mean"), loan_count=("default", "size"))
+        .agg(default_rate=(target_column, "mean"), loan_count=(target_column, "size"))
     )
     trend["period"] = pd.PeriodIndex(trend["issue_year_quarter"], freq="Q")
     trend = trend.sort_values("period").reset_index(drop=True)
@@ -900,6 +921,90 @@ def plot_hazard_vintage_calibration(validation_table, test_table, output_path, s
     return _finalize_figure(fig, output_path, show)
 
 
+def plot_hazard_model_comparison(comparison_table, output_path, show=False):
+    if comparison_table is None or comparison_table.empty:
+        return None
+
+    display_df = comparison_table.copy().sort_values("validation_rank")
+    x_positions = np.arange(len(display_df))
+    bar_width = 0.34
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
+
+    axes[0].bar(
+        x_positions - bar_width / 2,
+        display_df["validation_lifetime_auc"],
+        width=bar_width,
+        label="Validation",
+        color="#1f77b4",
+    )
+    axes[0].bar(
+        x_positions + bar_width / 2,
+        display_df["test_lifetime_auc"],
+        width=bar_width,
+        label="Test",
+        color="#ff7f0e",
+    )
+    axes[0].set_title("Lifetime PD AUC")
+    axes[0].set_ylabel("AUC")
+    axes[0].set_ylim(
+        max(0, float(display_df[["validation_lifetime_auc", "test_lifetime_auc"]].min().min()) - 0.03),
+        min(1, float(display_df[["validation_lifetime_auc", "test_lifetime_auc"]].max().max()) + 0.03),
+    )
+
+    axes[1].bar(
+        x_positions - bar_width / 2,
+        display_df["validation_lifetime_brier"],
+        width=bar_width,
+        label="Validation",
+        color="#1f77b4",
+    )
+    axes[1].bar(
+        x_positions + bar_width / 2,
+        display_df["test_lifetime_brier"],
+        width=bar_width,
+        label="Test",
+        color="#ff7f0e",
+    )
+    axes[1].set_title("Lifetime PD Brier Score")
+    axes[1].set_ylabel("Brier Score")
+    axes[1].set_ylim(
+        0,
+        float(display_df[["validation_lifetime_brier", "test_lifetime_brier"]].max().max()) * 1.15,
+    )
+
+    for ax in axes:
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels(
+            [_wrap_axis_label(name) for name in display_df["model_name"]],
+            rotation=0,
+            ha="center",
+        )
+        ax.grid(alpha=0.2, axis="y")
+        ax.legend()
+
+    selected_mask = (
+        display_df["selected"].astype(bool)
+        if "selected" in display_df.columns
+        else pd.Series(False, index=display_df.index)
+    )
+    selected = display_df[selected_mask]
+    if not selected.empty:
+        selected_name = selected.iloc[0]["model_name"]
+        fig.suptitle(f"Hazard Model Comparison (selected: {selected_name})", y=1.02)
+    else:
+        fig.suptitle("Hazard Model Comparison", y=1.02)
+    fig.tight_layout()
+    return _finalize_figure(fig, output_path, show)
+
+
+def _wrap_axis_label(label):
+    replacements = {
+        "Pooled Logistic Hazard": "Pooled Logistic\nHazard",
+        "HistGradientBoosting Hazard": "HistGradientBoosting\nHazard",
+    }
+    return replacements.get(str(label), str(label))
+
+
 def plot_monthly_hazard_profile(panel_counts, output_path, show=False):
     display_df = panel_counts.copy()
     display_df["month_bucket"] = pd.Categorical(
@@ -986,7 +1091,8 @@ def plot_portfolio_expected_loss(portfolio_summary, output_path, show=False):
         ("el_per_loan", "Expected Loss Per Loan", "currency"),
     ]
 
-    fig, axes = plt.subplots(len(scopes), len(metric_specs), figsize=(14, 6), squeeze=False)
+    fig_height = max(6, 2.8 * len(scopes))
+    fig, axes = plt.subplots(len(scopes), len(metric_specs), figsize=(14, fig_height), squeeze=False)
     for row_index, scope in enumerate(scopes):
         scope_df = (
             display_df[display_df["analysis_scope"] == scope]
@@ -1010,43 +1116,67 @@ def plot_portfolio_expected_loss(portfolio_summary, output_path, show=False):
 
 
 def plot_predicted_vs_actual_loss(portfolio_summary, output_path, show=False):
-    resolved_df = portfolio_summary[portfolio_summary["analysis_scope"] == "resolved_test"].copy()
-    if resolved_df.empty:
+    observable_12m = portfolio_summary[
+        (portfolio_summary["analysis_scope"] == "observable_12m_test")
+        & (portfolio_summary["pd_measure"] == "12m")
+    ].copy()
+    resolved_lifetime = portfolio_summary[
+        (portfolio_summary["analysis_scope"] == "resolved_test")
+        & (portfolio_summary["pd_measure"] == "lifetime")
+    ].copy()
+    if observable_12m.empty and resolved_lifetime.empty:
         return None
 
-    matched_row = resolved_df[resolved_df["pd_measure"] == "12m"].copy()
-    if matched_row.empty:
-        matched_row = resolved_df.head(1).copy()
-    matched_row = matched_row.iloc[0]
+    rows = []
+    for match, label in [
+        (observable_12m, "12M Observable"),
+        (resolved_lifetime, "Lifetime Resolved"),
+    ]:
+        if match.empty:
+            continue
+        row = match.iloc[0]
+        rows.append(
+            {
+                "label": label,
+                "expected": float(row["total_el"]),
+                "actual": float(row["actual_loss_amount"]),
+                "expected_rate": float(row["total_el"] / row["funded_amount"]),
+                "actual_rate": float(row["actual_loss_rate"]),
+            }
+        )
+    if not rows:
+        return None
 
-    predicted_loss_rate = float(matched_row["total_el"] / matched_row["funded_amount"])
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
+    labels = [row["label"] for row in rows]
+    x = np.arange(len(rows))
+    width = 0.36
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.8))
 
-    axes[0].bar(
-        ["Predicted 12M EL", "Actual Net Loss"],
-        [matched_row["total_el"], matched_row["actual_loss_amount"]],
-        color=["#4c78a8", "#e45756"],
-    )
-    axes[0].set_title("Resolved Holdout: Loss Amount")
+    axes[0].bar(x - width / 2, [row["expected"] for row in rows], width, label="Expected EL", color="#4c78a8")
+    axes[0].bar(x + width / 2, [row["actual"] for row in rows], width, label="Actual Net Loss", color="#e45756")
+    axes[0].set_xticks(x)
+    axes[0].set_xticklabels(labels)
+    axes[0].set_title("Expected vs Actual Loss Amount")
     axes[0].set_ylabel("Loss Amount")
     axes[0].yaxis.set_major_formatter(FuncFormatter(_format_compact_currency))
+    axes[0].legend()
     axes[0].grid(alpha=0.2, axis="y")
 
-    axes[1].bar(
-        ["Predicted 12M EL Rate", "Actual Net Loss Rate"],
-        [predicted_loss_rate, matched_row["actual_loss_rate"]],
-        color=["#4c78a8", "#e45756"],
-    )
-    axes[1].set_title("Resolved Holdout: Loss Rate")
+    axes[1].bar(x - width / 2, [row["expected_rate"] for row in rows], width, label="Expected EL Rate", color="#4c78a8")
+    axes[1].bar(x + width / 2, [row["actual_rate"] for row in rows], width, label="Actual Loss Rate", color="#e45756")
+    axes[1].set_xticks(x)
+    axes[1].set_xticklabels(labels)
+    axes[1].set_title("Expected vs Actual Loss Rate")
     axes[1].set_ylabel("Rate")
     axes[1].yaxis.set_major_formatter(PercentFormatter(xmax=1))
+    axes[1].legend()
     axes[1].grid(alpha=0.2, axis="y")
 
-    fig.suptitle("Matched-Horizon Loss Comparison")
+    fig.suptitle("Expected vs Actual Loss By Horizon")
     fig.text(
         0.5,
         0.01,
-        "Lifetime reserve estimates are shown separately and are not directly compared against realized resolved-vintage loss.",
+        "12M actual loss uses the full observable cohort; lifetime actual loss uses resolved-vintage net loss.",
         ha="center",
         fontsize=9,
     )

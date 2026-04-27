@@ -1,6 +1,13 @@
 data/raw/*
-data/processed/*.csv
+data/processed/*
 __pycache__/
 *.pyc
 .DS_Store
 .ipynb_checkpoints/
+tmp/
+output/spreadsheet/
+output/slides/
+output/doc/*.docx
+output/doc/*.bak_*.docx
+output/doc/*_summary.json
+reports/figures/temporal_model/interactive/
